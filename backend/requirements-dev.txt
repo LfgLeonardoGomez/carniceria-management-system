@@ -1,0 +1,7 @@
+pytest>=7.0
+pytest-asyncio
+httpx
+factory-boy
+testcontainers
+ruff
+mypy
