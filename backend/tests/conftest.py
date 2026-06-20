@@ -27,6 +27,23 @@ if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    """Reset the in-memory rate limiter before each test.
+
+    The limiter storage is a module-level singleton keyed by client IP.
+    In tests every request shares the same ``testserver`` IP, so without a
+    reset the per-IP budget leaks across tests and a later request gets a
+    spurious 429. This isolates each test without weakening prod behavior.
+    """
+    try:
+        from src.common.rate_limit import _storage
+        _storage.reset()
+    except Exception:
+        pass
+    yield
+
+
 @pytest.fixture(scope="session")
 def postgres_url():
     postgres = PostgresContainer("postgres:14-alpine")

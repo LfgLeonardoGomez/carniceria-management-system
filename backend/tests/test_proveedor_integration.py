@@ -362,7 +362,8 @@ class TestHistorialProveedor:
         response = await client.get(f"/proveedores/{proveedor.id}/historial", headers=_auth_header(usuario, empresa_id=empresa.id))
         assert response.status_code == 200
         data = response.json()
-        assert data == []
+        assert data["items"] == []
+        assert data["total"] == 0
 
     async def test_historial_proveedor_otra_empresa_404(self, client: AsyncClient, db_session: AsyncSession):
         empresa_a = await _crear_empresa(db_session, "Empresa A")

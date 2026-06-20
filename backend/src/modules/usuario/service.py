@@ -100,7 +100,8 @@ async def crear_usuario(
         raise ConflictException("Rol inválido")
 
     rol_nombre = normalize_rol(rol.nombre)
-    current_rol = normalize_rol(current_user.rol.nombre if current_user.rol else None)
+    current_rol_row = await db.get(Rol, current_user.rol_id)
+    current_rol = normalize_rol(current_rol_row.nombre if current_rol_row else None)
 
     # Validar permisos de creación según rol del creador
     if current_rol == "superadmin":
@@ -205,7 +206,8 @@ async def actualizar_usuario(
     Un admin NO puede elevar un rol a 'admin' ni a 'superadmin'.
     """
     usuario = await _get_usuario_de_empresa(db, empresa_id, usuario_id)
-    current_rol = normalize_rol(current_user.rol.nombre if current_user.rol else None)
+    current_rol_row = await db.get(Rol, current_user.rol_id)
+    current_rol = normalize_rol(current_rol_row.nombre if current_rol_row else None)
 
     # Si cambia el rol, proteger último admin y validar elevación
     if rol_id is not None and rol_id != usuario.rol_id:
