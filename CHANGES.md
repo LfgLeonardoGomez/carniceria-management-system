@@ -346,7 +346,7 @@ C-01 → C-02 → C-03 → C-05 → C-06 → C-08 → C-09 → C-10 → C-12 →
   - `knowledge-base/05_reglas_de_negocio.md` §RN-VENT, §RN-PAGO
 
 ### [C-13] `caja-operaciones`
-- **Estado**: `[ ]` pendiente — **stub vacío** en `backend/src/modules/caja/` (router de 3 líneas, models TODO)
+- **Estado**: `[~]` parcial — los modelos `Caja` y `MovimientoCaja` YA existen (tabla creada en migración 012, arrastrada por C-12 para registrar movimientos al cobrar). Falta implementar los endpoints (apertura/cierre/movimientos) y el `service.py`. El `router.py` sigue siendo stub de 3 líneas. **Bloqueante**: sin apertura de caja, C-12 no puede cobrar medios != cuenta_corriente end-to-end.
 - **Scope**:
   - `POST /caja/apertura` — fecha, usuario_apertura, efectivo_inicial. Valida que no exista otra caja abierta para la empresa (v1.0, SU-03).
   - `POST /caja/cierre` — fecha_cierre, usuario_cierre, montos reales (efectivo, transferencias, tarjetas).
@@ -371,7 +371,7 @@ C-01 → C-02 → C-03 → C-05 → C-06 → C-08 → C-09 → C-10 → C-12 →
 > Control de la financiación a clientes y gastos operativos.
 
 ### [C-14] `cuentas-corrientes`
-- **Estado**: `[ ]` pendiente — **stub vacío** en `backend/src/modules/cuenta_corriente/` (router de 3 líneas, models TODO)
+- **Estado**: `[~]` parcial — el modelo `CuentaCorriente` y su tabla YA existen (migración 012, arrastrada por C-12 para generar deuda al cobrar con cuenta corriente; C-12 también escribe la reversión en anulación). Falta implementar los endpoints (pagos, estado de cuenta) y el `service.py`. El `router.py` sigue siendo stub de 3 líneas.
 - **Scope**:
   - Tabla `CuentaCorriente` (movimientos): `cliente_id`, `tipo` (deuda, pago), `importe`, `saldo_resultante`, `venta_id` (nullable), `fecha`.
   - Generación automática de deuda: al cobrar una venta con medio `cuenta_corriente`, se crea movimiento tipo `deuda` con importe = total de la venta (RN-CC-01, RN-PAGO-02).
@@ -512,9 +512,9 @@ C-01 → C-02 → C-03 → C-05 → C-06 → C-08 → C-09 → C-10 → C-12 →
 | C-09 | desposte | 3 | ALTO | C-08 | `[x]` |
 | C-10 | stock-movimientos | 3 | ALTO | C-05 | `[x]` |
 | C-11 | balanza-systel | 4 | ALTO | C-05 | `[x]` |
-| C-12 | ventas-cobro | 4 | CRITICO | C-05, C-06, C-10 | `[ ]` |
-| C-13 | caja-operaciones | 4 | ALTO | C-03, C-12 | `[ ]` |
-| C-14 | cuentas-corrientes | 5 | ALTO | C-06, C-12 | `[ ]` |
+| C-12 | ventas-cobro | 4 | CRITICO | C-05, C-06, C-10 | `[x]` |
+| C-13 | caja-operaciones | 4 | ALTO | C-03, C-12 | `[~]` |
+| C-14 | cuentas-corrientes | 5 | ALTO | C-06, C-12 | `[~]` |
 | C-15 | gastos | 5 | MEDIO | C-03 | `[ ]` |
 | C-16 | dashboard | 6 | MEDIO | C-09, C-12, C-13, C-15 | `[ ]` |
 | C-17 | reportes-ventas | 6 | MEDIO | C-12 | `[ ]` |
@@ -529,7 +529,7 @@ C-01 → C-02 → C-03 → C-05 → C-06 → C-08 → C-09 → C-10 → C-12 →
 ## Decisiones de arquitectura pendientes
 
 ### `[CRITICO]` RBAC Superadmin — `DECISIONES/RBAC-SUPERADMIN-PENDIENTE.md`
-- **Estado**: No implementado
+- **Estado**: ✅ Implementado y archivado (`openspec/changes/archive/2026-06-18-c-rbac-superadmin/`). 5 roles, matriz sin wildcard, impersonación. **Nota**: la matriz inicial omitió `productos:delete` y `proveedores:delete` para `admin` — corregido el 2026-06-19 (ver deuda técnica #6).
 - **Impacto**: C-04 (usuarios-rbac), C-03 (empresa-config), y todos los changes futuros
 - **Resumen**: El modelo actual no distingue "admin del SaaS" (superadmin) de "admin de carnicería". El rol `admin` tiene `*` (wildcard). Se requiere: rol `superadmin` global (sin `empresa_id`), rol `admin` tenant-scoped, middleware RBAC actualizado, endpoint de impersonación, y panel de soporte en frontend.
 - **Recomendación**: Implementar **antes de C-12 (ventas-cobro)**. Es el cimiento de seguridad del SaaS multi-tenant.
@@ -543,30 +543,31 @@ C-01 → C-02 → C-03 → C-05 → C-06 → C-08 → C-09 → C-10 → C-12 →
 | 1 | ~~Desposte sin migración DB~~ | ~~CRITICA~~ | **RESUELTO 2026-06-18** — Migración 011 creada. Tablas `desposte` y `corte_desposte` existen. | `backend/src/database/migrations/versions/000000000011_add_desposte_tables.py` |
 | 2 | ~~Seed `TipoCorte` roto~~ | ~~ALTA~~ | **RESUELTO 2026-06-18** — Modelo `TipoCorte` SQLModel agregado, `Literal` renombrado a `TIPOS_CORTE_LITERAL`. Seed funciona. | `backend/src/modules/desposte/models.py` |
 | 3 | **Modelo `Usuario` en `auth/models.py`** | MEDIA | Pendiente | Stub en `usuario/models.py` genera confusión. Mover o consolidar. |
-| 4 | **Módulos vacíos en `main.py`** | BAJA | Pendiente | Routers stub (venta, caja, CC, reporte, auditoria, notificacion, gasto) ensucian `/docs`. |
-| 5 | **Historial proveedor devuelve paginación vacía** | BAJA | Pendiente | `test_proveedor_integration.py::test_historial_vacio` falla. Contrato API: `[]` vs `{items, total, ...}`. |
+| 4 | **Módulos vacíos en `main.py`** | BAJA | Pendiente | Routers stub (caja, CC, reporte, auditoria, notificacion, gasto) ensucian `/docs`. (venta ya implementado en C-12) |
+| 5 | ~~Historial proveedor devuelve paginación vacía~~ | ~~BAJA~~ | **RESUELTO 2026-06-19** — Contrato definido: envelope `{items, total, skip, limit, costo_promedio_historico}` (consistente con los demás list endpoints). Test ajustado. |
+| 6 | ~~Matriz RBAC sin `productos:delete`/`proveedores:delete` para admin~~ | ~~ALTA~~ | **RESUELTO 2026-06-19** — Regresión de c-rbac-superadmin: el admin no podía borrar productos/proveedores (403). Permisos agregados. | `backend/src/common/rbac.py` |
+| 7 | ~~`crear/actualizar_usuario` lazy-load de `current_user.rol`~~ | ~~MEDIA~~ | **RESUELTO 2026-06-19** — `MissingGreenlet` en tests de service async. Reemplazado por `await db.get(Rol, ...)`. | `backend/src/modules/usuario/service.py` |
 
 ---
 
 ## Próximo paso recomendado
 
-### Opción A (Recomendada): Implementar RBAC Superadmin
+### Opción A (Recomendada): Implementar C-13 caja-operaciones
 ```bash
-/opsx:propose c-rbac-superadmin
+/opsx:propose c-13-caja-operaciones
 ```
-**Por qué**: Es la decisión de arquitectura guardada en `DECISIONES/`. Sin esto, el modelo de permisos es incorrecto para SaaS multi-tenant. Debe hacerse **antes de que usuarios reales operen el sistema** (antes de C-12 ventas).
+**Por qué**: Es la dependencia que falta para que **C-12 ventas-cobro sea usable end-to-end**. Hoy el cobro exige una caja abierta (`venta/service.py`) pero no existe endpoint de apertura → no se puede cobrar efectivo/tarjeta en runtime real, solo cuenta corriente. Los modelos `Caja`/`MovimientoCaja` ya existen (migración 012); falta service + endpoints + frontend.
 
-### Opción B: Fix deuda técnica primero
-1. Crear migración `010` para desposte + corte_desposte
-2. Arreglar seed de `TipoCorte`
-3. Consolidar modelo `Usuario`
-
-### Opción C: Seguir con C-12 ventas-cobro (si el RBAC actual "sirve por ahora")
+### Opción B: Implementar C-14 cuentas-corrientes
 ```bash
-/opsx:propose C-12-ventas-cobro
+/opsx:propose c-14-cuentas-corrientes
 ```
-**Riesgo**: El admin tiene `*` (wildcard) — cualquier admin puede hacer todo, incluyendo anular ventas, modificar caja, etc. Aceptable solo para demo/MVP sin datos reales.
+**Por qué**: Modelo `CuentaCorriente` y la generación de deuda al cobrar ya existen (los trajo C-12). Falta el registro de pagos y el estado de cuenta. Cierra el ciclo de venta a crédito.
+
+### Opción C: Fix deuda técnica restante
+1. Consolidar modelo `Usuario` (#3)
+2. Limpiar routers stub de `main.py` que ensucian `/docs` (#4)
 
 ---
 
-> **Última sincronización**: 2026-06-18 — Estado del código auditado. 8 módulos completos, 2 parciales, 8 vacíos (stubs). 473 tests pasan, 3 fallan (1 encoding Windows, 1 contrato API, 1 seed roto).
+> **Última sincronización**: 2026-06-19 — Estado del código auditado a fondo. C-12 ventas-cobro completo (integra stock/caja/CC con reversión). C-13 caja y C-14 CC parciales (modelos + tablas existen vía migración 012, faltan endpoints). **542 tests pasan, 0 fallan** (suite completa con testcontainers). Las 10 fallas previas eran regresiones de c-rbac-superadmin + fragilidad async + contaminación del rate limiter entre tests — resueltas, no eran de C-12.
