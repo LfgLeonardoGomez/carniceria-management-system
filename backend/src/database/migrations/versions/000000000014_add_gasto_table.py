@@ -1,7 +1,7 @@
 """add gasto table
 
-Revision ID: 000000000013
-Revises: 000000000012
+Revision ID: 000000000014
+Revises: 000000000013
 Create Date: 2026-06-20 00:00:00.000000
 
 """
@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
-revision = "000000000013"
-down_revision = "000000000012"
+revision = "000000000014"
+down_revision = "000000000013"
 branch_labels = None
 depends_on = None
 
