@@ -363,6 +363,16 @@ C-01 → C-02 → C-03 → C-05 → C-06 → C-08 → C-09 → C-10 → C-12 →
   - `knowledge-base/06_funcionalidades.md` §US-014
   - `knowledge-base/07_flujos_principales.md` §Flujo 5: Cierre de caja
   - `knowledge-base/05_reglas_de_negocio.md` §RN-CAJA
+- **Decisiones post-review** (resueltas):
+  - Caja es **por cajero** (operador), no por empresa: varios cajeros pueden tener caja abierta simultáneamente. Resuelve KB IN-06 a favor de multi-cajero. Índice único `(empresa_id, operador_id) WHERE estado='abierta'`.
+  - Anulación cross-day (Rel-C1): la reversión de una venta de caja ya cerrada se registra como salida **efectivo** en la caja abierta actual del que anula (`caja_origen_id` → caja cerrada), nunca se toca la caja cerrada (trigger DB). Sin caja abierta → 409.
+- **Deuda técnica (post-review C-13) — RESUELTA 2026-06-21** (TDD, 612 tests verdes):
+  - [x] **Polish-1**: unificado en `efectivo_inicial` (NOT NULL); eliminado `monto_inicial`. Migración 016. Era riesgo de consistencia (apertura escribía ambos, cierre leía `monto_inicial`) — corregido.
+  - [x] **Polish-2**: `datetime.utcnow()` → `datetime.now(timezone.utc)` en caja/venta. (Pendiente transversal: el deprecado sigue en ~12 módulos más — barrido aparte.)
+  - [x] **Polish-3**: `tipo`/`medio` de `MovimientoCaja` tipados con `Literal` (patrón `TIPOS_CORTE_LITERAL` de desposte). Columna DB sigue str.
+  - [x] **Polish-4**: renombrado `caja:admin` → `caja:operate` en rbac.py (admin/encargado/cajero) + routers + tests. NOTA: el gap RBAC del encargado **ya estaba cerrado** (encargado ya tenía el permiso) — fue rename puro.
+  - [ ] **Rel-W1** (diferido v1.0, NO es bug): tarjetas mezclan débito+crédito sin conciliación por riel. Retomar cuando exista conciliación por medio de pago.
+  - [ ] **Migración 015/016/017**: validar con `alembic upgrade head` contra DB real antes de prod (la suite crea schema desde modelos vía `create_all`, no ejercita el trigger PL/pgSQL de la 015 ni la cadena de migraciones).
 
 ---
 
@@ -408,6 +418,13 @@ C-01 → C-02 → C-03 → C-05 → C-06 → C-08 → C-09 → C-10 → C-12 →
 ## FASE 6 — Dashboard, Reportes y Rentabilidad
 
 > Todo change de esta fase es de solo-lectura/aggregate. Depende de que existan datos de ventas, stock, gastos y desposte.
+
+### ✅ PREREQUISITO — `costo-snapshot-venta` (amend C-12) — RESUELTO 2026-06-21
+- **Estado**: `[x]` completado (TDD, 622 tests verdes) — **desbloquea el cálculo de GANANCIA en C-16, C-17, C-18 y C-19**.
+- **Problema**: la KB declara `Venta.ganancia_estimada` y `DetalleVenta.costo_unitario_estimado`, pero **ninguno existía en el modelo real**. El único costo disponible era `Producto.costo_por_kilo` (actual). Calcular ganancia con el costo actual reescribiría la ganancia de ventas pasadas cada vez que cambia un costo (contablemente incorrecto).
+- **Implementado**: `costo_unitario` (`Decimal`, nullable) en `DetalleVenta`; snapshot de `Producto.costo_por_kilo` en `crear_venta` (inmutable ante cambios posteriores de costo); migración additive 017 (sin backfill — filas viejas NULL). Helper puro `calcular_ganancia(lineas) -> Optional[Decimal]`: `Σ(importe) − Σ(cantidad_kilos × costo_unitario)`, devuelve `None` si **alguna** línea es NULL (nunca trata NULL como costo cero).
+- **Decisión**: snapshot de costo (PO, 2026-06-21). Ver engram `basile/costo-snapshot-venta`.
+- **Nota**: el resto de C-16/C-17 (ventas, kilos, clientes, stock crítico, productos más vendidos, tabla filtrable, export) NO depende de este prereq; solo la ganancia. C-16/C-17 consumen `calcular_ganancia` + `DetalleVenta.costo_unitario`.
 
 ### [C-16] `dashboard`
 - **Estado**: `[ ]` pendiente
