@@ -14,7 +14,7 @@ def _to_caja_read(caja) -> schemas.CajaRead:
         id=caja.id,
         empresa_id=caja.empresa_id,
         estado=caja.estado,
-        monto_inicial=caja.monto_inicial,
+        efectivo_inicial=caja.efectivo_inicial,
         monto_final=caja.monto_final,
         fecha_apertura=caja.fecha_apertura,
         fecha_cierre=caja.fecha_cierre,
@@ -35,7 +35,7 @@ def _to_esperado_read(esperado) -> schemas.EsperadoRead:
     "/apertura",
     response_model=schemas.CajaRead,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_role("caja:admin"))],
+    dependencies=[Depends(require_role("caja:operate"))],
 )
 async def apertura_caja(
     request: Request,
@@ -56,7 +56,7 @@ async def apertura_caja(
     "/movimientos",
     response_model=schemas.MovimientoCajaRead,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_role("caja:admin"))],
+    dependencies=[Depends(require_role("caja:operate"))],
 )
 async def crear_movimiento(
     request: Request,
@@ -67,6 +67,7 @@ async def crear_movimiento(
     movimiento = await service.registrar_movimiento(
         db=db,
         empresa_id=current_user.empresa_id,
+        usuario_id=current_user.id,
         tipo=payload.tipo,
         importe=payload.importe,
         descripcion=payload.descripcion,
@@ -85,7 +86,7 @@ async def crear_movimiento(
 @router.get(
     "/actual",
     response_model=schemas.CajaActualResponse,
-    dependencies=[Depends(require_role("caja:admin"))],
+    dependencies=[Depends(require_role("caja:operate"))],
 )
 async def caja_actual(
     request: Request,
@@ -93,7 +94,7 @@ async def caja_actual(
 ) -> schemas.CajaActualResponse:
     current_user: Usuario = request.state.current_user
     caja, esperado = await service.obtener_caja_abierta_con_esperado(
-        db=db, empresa_id=current_user.empresa_id
+        db=db, empresa_id=current_user.empresa_id, usuario_id=current_user.id
     )
     return schemas.CajaActualResponse(
         caja=_to_caja_read(caja),
@@ -104,7 +105,7 @@ async def caja_actual(
 @router.post(
     "/cierre",
     response_model=schemas.CierreCajaResponse,
-    dependencies=[Depends(require_role("caja:admin"))],
+    dependencies=[Depends(require_role("caja:operate"))],
 )
 async def cierre_caja(
     request: Request,

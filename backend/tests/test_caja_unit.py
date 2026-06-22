@@ -1,5 +1,8 @@
 from decimal import Decimal
 
+import pytest
+from pydantic import ValidationError
+
 from src.modules.caja.service import (
     _calcular_esperado,
     _calcular_diferencias,
@@ -126,3 +129,64 @@ class TestCalcularDiferencias:
 
     def test_umbral_es_un_centavo(self):
         assert UMBRAL_DIFERENCIA_SIGNIFICATIVA == Decimal("0.01")
+
+
+# ---------------------------------------------------------------------------
+# Polish-3: tipo/medio constraints on MovimientoCajaRequest
+# ---------------------------------------------------------------------------
+class TestTipoMedioConstraints:
+    def test_tipo_invalido_rechazado_en_schema(self):
+        """An invalid tipo must raise a Pydantic ValidationError at the schema layer."""
+        from src.modules.caja.schemas import MovimientoCajaRequest
+
+        with pytest.raises(ValidationError):
+            MovimientoCajaRequest(tipo="tipo_inventado", importe=Decimal("10.00"))
+
+    def test_tipo_sistema_rechazado_en_request_schema(self):
+        """System tipos (entrada_venta, salida_anulacion) must NOT be accepted via the
+        manual movimiento request schema — they are written by the service internally."""
+        from src.modules.caja.schemas import MovimientoCajaRequest
+
+        with pytest.raises(ValidationError):
+            MovimientoCajaRequest(tipo="entrada_venta", importe=Decimal("10.00"))
+        with pytest.raises(ValidationError):
+            MovimientoCajaRequest(tipo="salida_anulacion", importe=Decimal("10.00"))
+
+    def test_tipo_valido_aceptado(self):
+        """Valid manual tipos must be accepted by the schema."""
+        from src.modules.caja.schemas import MovimientoCajaRequest
+
+        req = MovimientoCajaRequest(tipo="retiro", importe=Decimal("10.00"))
+        assert req.tipo == "retiro"
+        req2 = MovimientoCajaRequest(tipo="ingreso_manual", importe=Decimal("5.00"))
+        assert req2.tipo == "ingreso_manual"
+
+
+# ---------------------------------------------------------------------------
+# Polish-4: caja:operate permission rename
+# ---------------------------------------------------------------------------
+class TestCajaPermisoRenombrado:
+    def test_caja_operate_en_cajero(self):
+        """cajero role must have 'caja:operate' permission after rename."""
+        from src.common.rbac import has_permission
+
+        assert has_permission("cajero", "caja:operate") is True
+
+    def test_caja_operate_en_encargado(self):
+        """encargado role must have 'caja:operate' permission after rename."""
+        from src.common.rbac import has_permission
+
+        assert has_permission("encargado", "caja:operate") is True
+
+    def test_caja_operate_en_admin(self):
+        """admin role must have 'caja:operate' permission after rename."""
+        from src.common.rbac import has_permission
+
+        assert has_permission("admin", "caja:operate") is True
+
+    def test_caja_admin_no_existe(self):
+        """After rename, 'caja:admin' must NOT exist in any role."""
+        from src.common.rbac import PERMISSION_MATRIX
+
+        for rol, perms in PERMISSION_MATRIX.items():
+            assert "caja:admin" not in perms, f"Role '{rol}' still has caja:admin"

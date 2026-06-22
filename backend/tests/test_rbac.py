@@ -35,14 +35,14 @@ class TestPermissionMatrix:
     def test_cajero_has_ventas_y_caja(self):
         perms = PERMISSION_MATRIX["cajero"]
         assert "ventas:create" in perms
-        assert "caja:admin" in perms
+        assert "caja:operate" in perms
         assert "stock:read" not in perms
 
     def test_vendedor_has_ventas_only(self):
         perms = PERMISSION_MATRIX["vendedor"]
         assert "ventas:create" in perms
         assert "ventas:read" in perms
-        assert "caja:admin" not in perms
+        assert "caja:operate" not in perms
         assert "stock:read" not in perms
 
 
@@ -68,7 +68,7 @@ class TestHasPermission:
         assert has_permission("cajero", "stock:read") is False
 
     def test_vendedor_no_puede_caja(self):
-        assert has_permission("vendedor", "caja:admin") is False
+        assert has_permission("vendedor", "caja:operate") is False
 
     def test_rol_inexistente_devuelve_false(self):
         assert has_permission("RolInexistente", "usuarios:create") is False

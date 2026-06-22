@@ -50,8 +50,21 @@ def upgrade() -> None:
     # movimiento_caja: descripcion for manual movements
     op.add_column("movimiento_caja", sa.Column("descripcion", sa.String(), nullable=True))
 
+    # Partial unique index: at most one `abierta` caja per (empresa, cajero). Several
+    # cajeros in the same empresa may each hold one open caja simultaneously; a single
+    # cajero may not hold two. Closes the apertura TOCTOU race at the DB layer.
+    op.create_index(
+        "uq_caja_una_abierta_por_cajero",
+        "caja",
+        ["empresa_id", "operador_id"],
+        unique=True,
+        postgresql_where=sa.text("estado = 'abierta'"),
+    )
+
 
 def downgrade() -> None:
+    op.drop_index("uq_caja_una_abierta_por_cajero", table_name="caja")
+
     op.drop_column("movimiento_caja", "descripcion")
 
     op.drop_index(op.f("ix_caja_usuario_cierre_id"), table_name="caja")

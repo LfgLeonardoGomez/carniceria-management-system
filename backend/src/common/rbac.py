@@ -85,7 +85,7 @@ PERMISSION_MATRIX: dict[str, set[str]] = {
         "reportes:read",
         "gastos:create",
         "gastos:read",
-        "caja:admin",
+        "caja:operate",
     },
     "encargado": {
         "stock:read",
@@ -111,11 +111,12 @@ PERMISSION_MATRIX: dict[str, set[str]] = {
         "reportes:read",
         "gastos:create",
         "gastos:read",
+        "caja:operate",
     },
     "cajero": {
         "ventas:create",
         "ventas:read",
-        "caja:admin",
+        "caja:operate",
         "clientes:create",
         "clientes:read",
         "productos:read",
