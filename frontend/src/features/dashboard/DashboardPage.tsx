@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import type {
   GraficosResponse,
   IndicadoresResponse,
   RankingsResponse,
 } from '@/shared/types/dashboard'
 import { fetchGraficos, fetchIndicadores, fetchRankings } from './api'
+import { useAuthStore } from '@/store/authStore'
+
+const REPORTES_ROLES = ['admin', 'administrador', 'encargado']
 
 // ---------------------------------------------------------------------------
 // KPI Card
@@ -123,6 +127,7 @@ function DailySalesList({ graficos }: DailySalesProps) {
 // DashboardPage
 // ---------------------------------------------------------------------------
 export function DashboardPage() {
+  const { user } = useAuthStore()
   const [indicadores, setIndicadores] = useState<IndicadoresResponse | null>(null)
   const [rankings, setRankings] = useState<RankingsResponse | null>(null)
   const [graficos, setGraficos] = useState<GraficosResponse | null>(null)
@@ -159,6 +164,14 @@ export function DashboardPage() {
 
   return (
     <div className="dashboard-page">
+      <nav className="dashboard-nav">
+        <span>Dashboard</span>
+        {user && REPORTES_ROLES.includes(user.rol) && (
+          <Link to="/reportes" className="nav-link-reportes">
+            Reportes
+          </Link>
+        )}
+      </nav>
       <h1>Dashboard</h1>
 
       {error && <div className="error-banner">{error}</div>}

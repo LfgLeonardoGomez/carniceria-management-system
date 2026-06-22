@@ -105,7 +105,7 @@ app.include_router(caja_router, prefix="/caja", tags=["caja"], dependencies=auth
 app.include_router(desposte_router, prefix="/desposte", tags=["desposte"], dependencies=auth_dep)
 app.include_router(producto_router, prefix="/producto", tags=["producto"], dependencies=auth_dep)
 app.include_router(cuenta_corriente_router, prefix="/cuenta-corriente", tags=["cuenta-corriente"], dependencies=auth_dep)
-app.include_router(reporte_router, prefix="/reporte", tags=["reporte"], dependencies=auth_dep)
+app.include_router(reporte_router, prefix="/reportes", tags=["reportes"], dependencies=auth_dep)
 app.include_router(auditoria_router, prefix="/auditoria", tags=["auditoria"], dependencies=auth_dep)
 app.include_router(notificacion_router, prefix="/notificacion", tags=["notificacion"], dependencies=auth_dep)
 app.include_router(gasto_router, prefix="/gasto", tags=["gasto"], dependencies=auth_dep)
