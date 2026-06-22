@@ -1,7 +1,7 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, List
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
@@ -87,6 +87,30 @@ def _calcular_totales(items: list[DetalleVenta], descuentos: Decimal) -> tuple[D
     return subtotal, total
 
 
+def calcular_ganancia(lineas: List[DetalleVenta]) -> Optional[Decimal]:
+    """Compute the estimated profit for a sale.
+
+    Formula: ganancia = Σ(importe) − Σ(cantidad_kilos × costo_unitario)
+
+    Returns None if ANY line has costo_unitario IS NULL (pre-snapshot historical
+    line). Treating NULL as zero would silently inflate profit — accounting-incorrect.
+    Returns Decimal("0.00") for an empty lines list (vacuous truth: all costs known).
+    """
+    if not lineas:
+        return Decimal("0.00")
+
+    total_importe = Decimal("0.00")
+    total_costo = Decimal("0.00")
+
+    for linea in lineas:
+        if linea.costo_unitario is None:
+            return None
+        total_importe += Decimal(str(linea.importe))
+        total_costo += Decimal(str(linea.cantidad_kilos)) * Decimal(str(linea.costo_unitario))
+
+    return (total_importe - total_costo).quantize(Decimal("0.01"))
+
+
 async def _validar_stock_suficiente(
     db: AsyncSession,
     empresa_id: uuid.UUID,
@@ -104,10 +128,19 @@ async def _validar_stock_suficiente(
 async def _obtener_caja_abierta(
     db: AsyncSession,
     empresa_id: uuid.UUID,
+    usuario_id: uuid.UUID,
 ) -> Optional[Caja]:
+    """Resolve the open caja of the cajero performing the cobro.
+
+    Caja is per cajero (operador): a sale's cash movement lands in the caja of the
+    cajero who collects it, not in a single shared empresa caja. Scoping by
+    operador_id is also required for correctness — with several open cajas per empresa
+    a lookup keyed only on empresa_id would raise on `scalar_one_or_none()`.
+    """
     result = await db.execute(
         select(Caja).where(
             Caja.empresa_id == empresa_id,
+            Caja.operador_id == usuario_id,
             Caja.estado == "abierta",
         )
     )
@@ -165,11 +198,16 @@ async def crear_venta(
         precio_unitario = Decimal(str(precio_unitario)).quantize(Decimal("0.01"))
         importe = (cantidad * precio_unitario).quantize(Decimal("0.01"))
 
+        # Snapshot the product cost at this exact moment so that future cost
+        # changes do not retroactively alter the profit of this sale.
+        costo_snapshot = Decimal(str(producto.costo_por_kilo)).quantize(Decimal("0.01"))
+
         detalle = DetalleVenta(
             producto_id=item.producto_id,
             cantidad_kilos=cantidad,
             precio_unitario=precio_unitario,
             importe=importe,
+            costo_unitario=costo_snapshot,
         )
         detalles.append(detalle)
 
@@ -184,7 +222,7 @@ async def crear_venta(
         subtotal=subtotal,
         descuentos=descuentos,
         total=total,
-        fecha=datetime.utcnow(),
+        fecha=datetime.now(timezone.utc),
     )
     venta.detalles = detalles
 
@@ -248,11 +286,12 @@ async def cobrar_venta(
             "No se puede cobrar con cuenta corriente sin un cliente asociado"
         )
 
-    # Validar caja abierta (excepto CC según spec)
+    # Validar caja abierta (excepto CC según spec). The sale's cash movement lands in
+    # the caja of the cajero collecting it (per-cajero model).
     if medio_pago != "cuenta_corriente":
-        caja_abierta = await _obtener_caja_abierta(db, empresa_id)
+        caja_abierta = await _obtener_caja_abierta(db, empresa_id, current_user.id)
         if not caja_abierta:
-            raise ConflictException("No hay caja abierta para esta empresa")
+            raise ConflictException("No hay caja abierta para este cajero")
         caja = caja_abierta
     else:
         caja = None
@@ -274,7 +313,7 @@ async def cobrar_venta(
             referencia_tipo="venta",
             referencia_id=str(venta.id),
             operador_id=current_user.id,
-            fecha=datetime.utcnow(),
+            fecha=datetime.now(timezone.utc),
         )
         db.add(movimiento)
 
@@ -299,7 +338,7 @@ async def cobrar_venta(
             medio=medio_pago,
             importe=venta.total,
             venta_id=venta.id,
-            fecha=datetime.utcnow(),
+            fecha=datetime.now(timezone.utc),
         )
         db.add(mov_caja)
 
@@ -321,7 +360,7 @@ async def cobrar_venta(
             importe=venta.total,
             saldo_resultante=nuevo_saldo,
             venta_id=venta.id,
-            fecha=datetime.utcnow(),
+            fecha=datetime.now(timezone.utc),
         )
         db.add(cc)
         cliente.saldo_actual = nuevo_saldo
@@ -361,14 +400,19 @@ async def anular_venta(
             referencia_tipo="anulacion_venta",
             referencia_id=str(venta.id),
             operador_id=current_user.id,
-            fecha=datetime.utcnow(),
+            fecha=datetime.now(timezone.utc),
         )
         db.add(movimiento)
 
         producto = await _get_producto_de_empresa(db, empresa_id, detalle.producto_id)
         producto.stock_actual = stock_resultante
 
-    # Reversión de caja: si había movimiento de entrada, crear salida
+    # Reversión de caja: si hubo una entrada_venta, crear la salida_anulacion.
+    # La caja cerrada es INMUTABLE: nunca se le escribe. Dos casos (Rel-C1):
+    #   - caja original ABIERTA (same-period): reversión en su mismo medio, ahí mismo.
+    #   - caja original CERRADA (cross-day): salida EFECTIVO en la caja abierta actual
+    #     del que anula, ligada a la caja de origen vía caja_origen_id. Sin caja abierta
+    #     no se puede registrar la devolución -> 409.
     result = await db.execute(
         select(MovimientoCaja).where(
             MovimientoCaja.venta_id == venta.id,
@@ -377,16 +421,33 @@ async def anular_venta(
     )
     mov_caja_original = result.scalar_one_or_none()
     if mov_caja_original:
-        mov_caja_reversion = MovimientoCaja(
-            caja_id=mov_caja_original.caja_id,
-            empresa_id=empresa_id,
-            tipo="salida_anulacion",
-            medio=mov_caja_original.medio,
-            importe=-venta.total,
-            venta_id=venta.id,
-            fecha=datetime.utcnow(),
-        )
-        db.add(mov_caja_reversion)
+        caja_original = await db.get(Caja, mov_caja_original.caja_id)
+        if caja_original is not None and caja_original.estado == "abierta":
+            db.add(MovimientoCaja(
+                caja_id=caja_original.id,
+                empresa_id=empresa_id,
+                tipo="salida_anulacion",
+                medio=mov_caja_original.medio,
+                importe=-venta.total,
+                venta_id=venta.id,
+                fecha=datetime.now(timezone.utc),
+            ))
+        else:
+            caja_actual = await _obtener_caja_abierta(db, empresa_id, current_user.id)
+            if caja_actual is None:
+                raise ConflictException(
+                    "No hay caja abierta para registrar la devolución. Abrí una caja."
+                )
+            db.add(MovimientoCaja(
+                caja_id=caja_actual.id,
+                empresa_id=empresa_id,
+                tipo="salida_anulacion",
+                medio="efectivo",
+                importe=-venta.total,
+                venta_id=venta.id,
+                caja_origen_id=mov_caja_original.caja_id,
+                fecha=datetime.now(timezone.utc),
+            ))
 
     # Reversión de cuenta corriente
     result = await db.execute(
@@ -413,7 +474,7 @@ async def anular_venta(
             importe=venta.total,
             saldo_resultante=nuevo_saldo,
             venta_id=venta.id,
-            fecha=datetime.utcnow(),
+            fecha=datetime.now(timezone.utc),
         )
         db.add(cc_reversion)
         cliente.saldo_actual = nuevo_saldo

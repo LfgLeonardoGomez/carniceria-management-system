@@ -40,6 +40,7 @@ class DetalleVentaRead(BaseModel):
     cantidad_kilos: Decimal
     precio_unitario: Decimal
     importe: Decimal
+    costo_unitario: Optional[Decimal] = None
 
     model_config = ConfigDict(extra="forbid")
 

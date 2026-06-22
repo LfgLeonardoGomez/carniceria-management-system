@@ -135,7 +135,7 @@ async def _crear_caja_abierta(
     caja = Caja(
         empresa_id=empresa_id,
         operador_id=operador_id,
-        monto_inicial=Decimal("100.00"),
+        efectivo_inicial=Decimal("100.00"),
         estado="abierta",
     )
     db.add(caja)
@@ -422,6 +422,96 @@ class TestAnularVenta:
         result = await db_session.execute(select(Cliente).where(Cliente.id == cliente.id))
         cliente_db = result.scalar_one()
         assert Decimal(str(cliente_db.saldo_actual)) == Decimal("0.00")
+
+
+# ---------------------------------------------------------------------------
+# Rel-C1: anulación cross-day (caja original ya cerrada)
+# La reversión NO toca la caja cerrada; se registra como salida EFECTIVO en la
+# caja abierta actual del que anula, vinculada a la venta original (venta_id) y a
+# la caja de origen (caja_origen_id). Sin caja abierta -> rechazo.
+# ---------------------------------------------------------------------------
+class TestAnulacionCrossDay:
+    async def test_cross_day_reversion_en_caja_actual_efectivo(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        empresa = await _crear_empresa(db_session)
+        rol_admin = await _crear_rol(db_session, nombre="admin", empresa_id=empresa.id)
+        usuario = await _crear_usuario(
+            db_session, email="admin-cd@basile.app", empresa_id=empresa.id, rol_id=rol_admin.id
+        )
+        producto = await _crear_producto(db_session, empresa.id, stock_actual=Decimal("10.0000"))
+        h = _auth_header(usuario, rol_nombre="admin", empresa_id=empresa.id)
+
+        # Día 1: abre caja1, vende 2kg, cobra DÉBITO (2000), cierra caja1.
+        await client.post("/caja/apertura", headers=h, json={"efectivo_inicial": "100.00"})
+        r = await client.post(
+            "/venta", headers=h,
+            json={"items": [{"producto_id": str(producto.id), "cantidad_kilos": "2.000"}]},
+        )
+        venta_id = r.json()["id"]
+        await client.post(f"/venta/{venta_id}/cobrar", headers=h, json={"medio_pago": "debito"})
+        cierre = await client.post(
+            "/caja/cierre", headers=h,
+            json={"efectivo_real": "100.00", "transferencias_real": "0.00", "tarjetas_real": "2000.00"},
+        )
+        assert cierre.status_code == 200
+        caja1_id = cierre.json()["caja"]["id"]
+
+        # Día 2: abre caja2.
+        r2 = await client.post("/caja/apertura", headers=h, json={"efectivo_inicial": "5000.00"})
+        caja2_id = r2.json()["id"]
+
+        # Anula la venta del día 1.
+        anula = await client.post(f"/venta/{venta_id}/anular", headers=h)
+        assert anula.status_code == 200
+
+        # La reversión vive en caja2, en EFECTIVO (no débito), -2000, ligada a caja1.
+        result = await db_session.execute(
+            select(MovimientoCaja).where(
+                MovimientoCaja.venta_id == uuid.UUID(venta_id),
+                MovimientoCaja.tipo == "salida_anulacion",
+            )
+        )
+        rev = result.scalar_one()
+        assert str(rev.caja_id) == caja2_id
+        assert rev.medio == "efectivo"
+        assert Decimal(str(rev.importe)) == Decimal("-2000.00")
+        assert str(rev.caja_origen_id) == caja1_id
+
+        # La caja1 (cerrada) quedó INTACTA: solo su entrada_venta original.
+        result = await db_session.execute(
+            select(MovimientoCaja).where(MovimientoCaja.caja_id == uuid.UUID(caja1_id))
+        )
+        movs_caja1 = list(result.scalars().all())
+        assert len(movs_caja1) == 1
+        assert movs_caja1[0].tipo == "entrada_venta"
+
+    async def test_cross_day_sin_caja_abierta_rechazada(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
+        empresa = await _crear_empresa(db_session)
+        rol_admin = await _crear_rol(db_session, nombre="admin", empresa_id=empresa.id)
+        usuario = await _crear_usuario(
+            db_session, email="admin-cd2@basile.app", empresa_id=empresa.id, rol_id=rol_admin.id
+        )
+        producto = await _crear_producto(db_session, empresa.id, stock_actual=Decimal("10.0000"))
+        h = _auth_header(usuario, rol_nombre="admin", empresa_id=empresa.id)
+
+        await client.post("/caja/apertura", headers=h, json={"efectivo_inicial": "100.00"})
+        r = await client.post(
+            "/venta", headers=h,
+            json={"items": [{"producto_id": str(producto.id), "cantidad_kilos": "1.000"}]},
+        )
+        venta_id = r.json()["id"]
+        await client.post(f"/venta/{venta_id}/cobrar", headers=h, json={"medio_pago": "efectivo"})
+        await client.post(
+            "/caja/cierre", headers=h,
+            json={"efectivo_real": "1100.00", "transferencias_real": "0.00", "tarjetas_real": "0.00"},
+        )
+        # No hay caja abierta ahora: no se puede registrar la devolución.
+        anula = await client.post(f"/venta/{venta_id}/anular", headers=h)
+        assert anula.status_code == 409
+        assert "caja" in anula.json()["detail"].lower()
 
 
 # ---------------------------------------------------------------------------
