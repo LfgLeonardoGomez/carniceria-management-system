@@ -22,5 +22,5 @@
 
 ## Not in scope (deferred)
 
-- [ ] Alert engine implementation (IN-04)
-- [ ] Route registration in App.tsx (depends on router setup — out of scope for this PR)
+- [ ] Alert engine implementation (IN-04) — deferred as its own future change
+- [x] Route registration in App.tsx — done 2026-06-21 (router already set up; /gastos wired with PrivateRoute)
