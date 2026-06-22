@@ -5,7 +5,12 @@
  * Auth: Bearer token from localStorage, same pattern as dashboard/api.ts
  */
 import axios from 'axios'
-import type { ReportesFilters, ReporteVentasResponse } from './types'
+import type {
+  ReportesFilters,
+  ReporteVentasResponse,
+  ReporteFinancieroFilters,
+  ReporteFinancieroResponse,
+} from './types'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
@@ -52,4 +57,26 @@ export function buildExportUrl(
   if (filters.fecha_hasta) params.set('fecha_hasta', filters.fecha_hasta)
   if (filters.cliente_id) params.set('cliente_id', filters.cliente_id)
   return `${base}?${params.toString()}`
+}
+
+// ---------------------------------------------------------------------------
+// C-18 — Financial report API (APPEND-ONLY; do not edit C-17 functions above)
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch the financial indicators report from GET /reportes/financieros.
+ *
+ * Returns per-period rows with ventas, costos, gastos, utilidad_bruta,
+ * and utilidad_neta. Null indicators mean cost data is unavailable — never
+ * treat null as zero on the frontend.
+ */
+export async function fetchReporteFinanciero(
+  filters: ReporteFinancieroFilters,
+): Promise<ReporteFinancieroResponse> {
+  const params: Record<string, string> = { group_by: filters.group_by }
+  if (filters.fecha_desde !== undefined) params.fecha_desde = filters.fecha_desde
+  if (filters.fecha_hasta !== undefined) params.fecha_hasta = filters.fecha_hasta
+
+  const response = await api.get<ReporteFinancieroResponse>('/reportes/financieros', { params })
+  return response.data
 }

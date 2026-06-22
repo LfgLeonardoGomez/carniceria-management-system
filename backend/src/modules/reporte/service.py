@@ -8,9 +8,9 @@ from __future__ import annotations
 import csv
 import io
 import uuid
-from datetime import datetime
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 from sqlalchemy import select, func, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,7 +18,12 @@ from sqlalchemy.orm import selectinload
 
 from src.modules.cliente.models import Cliente
 from src.modules.producto.models import Producto
-from src.modules.reporte.schemas import VentaReporteRow
+from src.modules.reporte.schemas import (
+    FinancieroPeriodoRow,
+    GroupBy,
+    ReporteFinancieroResponse,
+    VentaReporteRow,
+)
 from src.modules.venta.models import DetalleVenta, PagoVenta, Venta
 from src.modules.venta.service import calcular_ganancia
 
@@ -411,3 +416,226 @@ def generar_pdf(
     story.append(table)
     doc.build(story)
     return buffer.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# C-18 — Financial report helpers (Decision 2, 3, 4)
+# NOTE: APPEND-ONLY. Do not modify C-17 symbols above.
+# ---------------------------------------------------------------------------
+
+def periodo_key(fecha: Union[datetime, date], group_by: GroupBy) -> str:
+    """Compute a deterministic period bucket key for a date or datetime.
+
+    Normalises both `datetime` (UTC) and `date` inputs to the same UTC calendar
+    so that a venta (datetime) and a gasto (date) in the same period share the
+    same key.
+
+    group_by values:
+      'dia'    → "YYYY-MM-DD"
+      'semana' → ISO year-week "YYYY-Www"  (ISO 8601: week starts Monday)
+      'mes'    → "YYYY-MM"
+      'anio'   → "YYYY"
+    """
+    # Normalise to a date in UTC
+    if isinstance(fecha, datetime):
+        # If naive, treat as UTC (project rule: DB is UTC)
+        if fecha.tzinfo is None:
+            d = fecha.date()
+        else:
+            d = fecha.astimezone(timezone.utc).date()
+    else:
+        d = fecha  # already a date
+
+    if group_by == "dia":
+        return d.isoformat()  # "YYYY-MM-DD"
+
+    if group_by == "semana":
+        iso_year, iso_week, _ = d.isocalendar()
+        return f"{iso_year}-W{iso_week:02d}"
+
+    if group_by == "mes":
+        return f"{d.year}-{d.month:02d}"
+
+    # anio
+    return str(d.year)
+
+
+def _build_buckets_financieros(
+    ventas: list,
+    gastos: list,
+    group_by: GroupBy,
+) -> list[FinancieroPeriodoRow]:
+    """Compute per-period financial indicators from in-memory lists.
+
+    This pure function is separated from the DB query so it can be unit-tested
+    without a database.
+
+    Cost contract (mirrors calcular_ganancia):
+      - costos for a bucket = Σ(cantidad_kilos × costo_unitario) across all
+        DetalleVenta of cobrada ventas in that bucket.
+      - If ANY line has costo_unitario IS NULL → costos, utilidad_bruta,
+        utilidad_neta are all None for that bucket.
+      - NULL is NEVER zero.
+
+    Ordering: buckets are returned sorted chronologically by period key string
+    (ISO format is lexicographically monotone for dia/mes/anio; Www with
+    zero-padded week also sorts correctly).
+    """
+    # ---- Phase 1: aggregate ventas by period key ----
+    # bucket_ventas: period_key → total ventas (Decimal)
+    # bucket_costos: period_key → Optional[Decimal] (None = any null snapshot)
+    bucket_ventas: dict[str, Decimal] = {}
+    # None means "cost unavailable for this bucket"
+    bucket_costos: dict[str, Optional[Decimal]] = {}
+
+    for v in ventas:
+        key = periodo_key(v.fecha, group_by)
+
+        # Add venta total — net revenue basis: Venta.total already includes descuentos (intentional)
+        bucket_ventas[key] = bucket_ventas.get(key, Decimal("0.00")) + Decimal(str(v.total))
+
+        # Compute costos for this venta's detalles
+        # If the bucket is already null, stay null
+        if bucket_costos.get(key) is None and key in bucket_costos:
+            # Already null — no point computing
+            continue
+
+        venta_costo: Optional[Decimal] = Decimal("0.00")
+        for det in v.detalles:
+            if det.costo_unitario is None:
+                venta_costo = None
+                break
+            venta_costo = venta_costo + Decimal(str(det.cantidad_kilos)) * Decimal(str(det.costo_unitario))  # type: ignore[operator]
+
+        if key not in bucket_costos:
+            bucket_costos[key] = venta_costo
+        elif bucket_costos[key] is not None and venta_costo is None:
+            bucket_costos[key] = None
+        elif bucket_costos[key] is not None and venta_costo is not None:
+            bucket_costos[key] = bucket_costos[key] + venta_costo  # type: ignore[operator]
+        # else: already None, leave as None
+
+    # ---- Phase 2: aggregate gastos by period key ----
+    bucket_gastos: dict[str, Decimal] = {}
+    for g in gastos:
+        key = periodo_key(g.fecha, group_by)
+        bucket_gastos[key] = bucket_gastos.get(key, Decimal("0.00")) + Decimal(str(g.importe))
+
+    # ---- Phase 3: merge all period keys ----
+    all_periods: set[str] = set(bucket_ventas.keys()) | set(bucket_gastos.keys())
+
+    rows: list[FinancieroPeriodoRow] = []
+    for period in sorted(all_periods):
+        v_total = bucket_ventas.get(period, Decimal("0.00"))
+        g_total = bucket_gastos.get(period, Decimal("0.00"))
+        costos = bucket_costos.get(period)
+
+        # If no ventas in this period (only gastos), costos=0 and formulas work
+        if period not in bucket_ventas:
+            costos = Decimal("0.00")
+
+        if costos is None:
+            utilidad_bruta = None
+            utilidad_neta = None
+        else:
+            utilidad_bruta = (v_total - costos).quantize(Decimal("0.01"))
+            utilidad_neta = (utilidad_bruta - g_total).quantize(Decimal("0.01"))
+
+        rows.append(
+            FinancieroPeriodoRow(
+                periodo=period,
+                ventas=v_total.quantize(Decimal("0.01")),
+                gastos=g_total.quantize(Decimal("0.01")),
+                costos=costos.quantize(Decimal("0.01")) if costos is not None else None,
+                utilidad_bruta=utilidad_bruta,
+                utilidad_neta=utilidad_neta,
+            )
+        )
+
+    return rows
+
+
+def _to_utc_date(dt: Union[datetime, date]) -> date:
+    """Normalise a datetime or date to a UTC calendar date.
+
+    Mirrors the same normalisation used by periodo_key:
+    - naive datetime → treat as UTC, extract date
+    - aware datetime → convert to UTC, extract date
+    - date → returned as-is
+    """
+    if isinstance(dt, datetime):
+        if dt.tzinfo is None:
+            return dt.date()
+        return dt.astimezone(timezone.utc).date()
+    return dt
+
+
+async def reporte_financiero(
+    db: AsyncSession,
+    empresa_id: uuid.UUID,
+    group_by: GroupBy,
+    fecha_desde: Optional[datetime] = None,
+    fecha_hasta: Optional[datetime] = None,
+) -> ReporteFinancieroResponse:
+    """Aggregate financial indicators per period for a given empresa.
+
+    Three tenant-scoped queries (Decision 4):
+    1. Load cobrada Venta rows + their DetalleVenta (for ventas + costos).
+    2. Load Gasto rows (for gastos).
+    3. Bucket in Python via periodo_key; compute five indicators; merge.
+
+    Multi-tenant isolation: empresa_id is applied first in every query.
+
+    Date-range boundaries: both ventas (datetime column) and gastos (date column)
+    are filtered by the same UTC calendar-day boundaries so that a venta and a
+    gasto on the same UTC calendar day are always included or excluded together.
+    A mid-day fecha_hasta is treated as the END of that calendar day for ventas.
+    """
+    from src.modules.gasto.models import Gasto
+
+    # Derive UTC calendar-day bounds once; use for both streams.
+    # This ensures symmetric inclusivity: a venta datetime and a gasto date on the
+    # same UTC calendar day are treated identically regardless of the time component.
+    cal_desde: Optional[date] = _to_utc_date(fecha_desde) if fecha_desde is not None else None
+    cal_hasta: Optional[date] = _to_utc_date(fecha_hasta) if fecha_hasta is not None else None
+
+    # ---- Query 1: cobrada ventas + detalles ----
+    # Uses calendar-day lower bound (start of day) and inclusive upper bound (end of day)
+    # so that any venta with a datetime on the boundary calendar day is included.
+    where_v = [
+        Venta.empresa_id == empresa_id,
+        Venta.estado == "cobrada",
+    ]
+    if cal_desde is not None:
+        # Lower bound: start of UTC calendar day (inclusive)
+        where_v.append(Venta.fecha >= datetime(cal_desde.year, cal_desde.month, cal_desde.day, 0, 0, 0))
+    if cal_hasta is not None:
+        # Upper bound: end of UTC calendar day (inclusive) — captures all datetimes on that day.
+        # Use timedelta to safely advance by one day (avoids month-boundary arithmetic errors).
+        next_day = datetime(cal_hasta.year, cal_hasta.month, cal_hasta.day, 0, 0, 0) + timedelta(days=1)
+        where_v.append(Venta.fecha < next_day)
+
+    ventas_q = (
+        select(Venta)
+        .options(selectinload(Venta.detalles))
+        .where(*where_v)
+    )
+    result_v = await db.execute(ventas_q)
+    ventas: list[Venta] = list(result_v.scalars().all())
+
+    # ---- Query 2: gastos ----
+    # Uses the same UTC calendar-day bounds (gastos.fecha is a date column).
+    where_g = [Gasto.empresa_id == empresa_id]
+    if cal_desde is not None:
+        where_g.append(Gasto.fecha >= cal_desde)
+    if cal_hasta is not None:
+        where_g.append(Gasto.fecha <= cal_hasta)
+
+    gastos_q = select(Gasto).where(*where_g)
+    result_g = await db.execute(gastos_q)
+    gastos: list[Gasto] = list(result_g.scalars().all())
+
+    # ---- Query 3: bucket + compute indicators ----
+    rows = _build_buckets_financieros(ventas, gastos, group_by)
+
+    return ReporteFinancieroResponse(group_by=group_by, rows=rows)

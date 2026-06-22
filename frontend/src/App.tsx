@@ -14,6 +14,7 @@ import { PosPage } from '@/pages/PosPage'
 import { GastosPage } from '@/pages/GastosPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { ReportesVentasPage } from '@/pages/ReportesVentasPage'
+import { ReportesFinancierosPage } from '@/pages/ReportesFinancierosPage'
 
 function SuperadminRoute({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated } = useAuthStore()
@@ -213,6 +214,14 @@ function App() {
           element={
             <PrivateRoute>
               <ReportesVentasPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/reportes/financieros"
+          element={
+            <PrivateRoute>
+              <ReportesFinancierosPage />
             </PrivateRoute>
           }
         />

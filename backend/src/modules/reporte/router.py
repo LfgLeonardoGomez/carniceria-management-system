@@ -1,10 +1,11 @@
-"""Reporte router — sales report endpoints.
+"""Reporte router — sales and financial report endpoints.
 
-Two routes:
-  GET /reportes/ventas                    — paginated JSON report
-  GET /reportes/ventas/exportar?formato=  — binary file download (xlsx / csv / pdf)
+Routes:
+  GET /reportes/ventas                    — paginated JSON sales report (C-17)
+  GET /reportes/ventas/exportar?formato=  — binary file download (C-17)
+  GET /reportes/financieros               — financial indicators report (C-18)
 
-Both routes are read-only and require role administrador or encargado (reportes:read).
+All routes are read-only and require role administrador or encargado (reportes:read).
 """
 from __future__ import annotations
 
@@ -22,7 +23,12 @@ from src.modules.auth.dependencies import get_current_user
 from src.modules.auth.models import Usuario
 from src.modules.empresa.models import Empresa
 from src.modules.reporte import service
-from src.modules.reporte.schemas import ExportFormato, ReporteVentasResponse
+from src.modules.reporte.schemas import (
+    ExportFormato,
+    GroupBy,
+    ReporteFinancieroResponse,
+    ReporteVentasResponse,
+)
 
 router = APIRouter()
 
@@ -156,4 +162,38 @@ async def exportar_reporte_ventas(
         content=io.BytesIO(file_bytes),
         media_type=_CONTENT_TYPE_MAP[formato],
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+# ---------------------------------------------------------------------------
+# C-18 — GET /reportes/financieros — financial indicators report
+# NOTE: APPEND-ONLY. C-17 routes above are untouched.
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/financieros",
+    response_model=ReporteFinancieroResponse,
+    dependencies=[Depends(require_role("reportes:read"))],
+)
+async def listar_reporte_financiero(
+    group_by: GroupBy = Query(default="mes"),
+    fecha_desde: Optional[datetime] = Query(default=None),
+    fecha_hasta: Optional[datetime] = Query(default=None),
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ReporteFinancieroResponse:
+    """Financial indicators report (ventas, costos, gastos, utilidad bruta/neta) per period.
+
+    Temporal bucketing controlled by group_by (dia|semana|mes|anio, default mes).
+    Optional date range filter (fecha_desde / fecha_hasta).
+    Scoped strictly to the authenticated user's empresa_id (multi-tenant isolation).
+    Null indicators signal that cost data is unavailable for that bucket (never zero).
+    """
+    empresa_id = current_user.empresa_id
+    return await service.reporte_financiero(
+        db=db,
+        empresa_id=empresa_id,
+        group_by=group_by,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
     )
