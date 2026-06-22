@@ -46,4 +46,11 @@ postgres_data/
 
 # State files
 .jr-orchestrator-state.json
+.active-orchestrator-state.json
+
+# Local tooling — regenerated per machine, not versioned
+.atl/
+
+# Engram project memory — kept local/private
+.engram/
 
