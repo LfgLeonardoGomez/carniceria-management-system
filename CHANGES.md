@@ -427,7 +427,7 @@ C-01 → C-02 → C-03 → C-05 → C-06 → C-08 → C-09 → C-10 → C-12 →
 - **Nota**: el resto de C-16/C-17 (ventas, kilos, clientes, stock crítico, productos más vendidos, tabla filtrable, export) NO depende de este prereq; solo la ganancia. C-16/C-17 consumen `calcular_ganancia` + `DetalleVenta.costo_unitario`.
 
 ### [C-16] `dashboard`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado (TDD, 43 backend tests + 8 frontend tests verdes, 2026-06-21)
 - **Scope**:
   - Endpoint `GET /dashboard/indicadores` — ventas del día, ventas del mes, kilos vendidos, clientes atendidos, stock crítico (count), ganancia bruta, ganancia neta, gastos del mes.
   - Rankings: productos más vendidos, cortes más vendidos (requiere C-09 desposte finalizado o join con ventas).
@@ -533,7 +533,7 @@ C-01 → C-02 → C-03 → C-05 → C-06 → C-08 → C-09 → C-10 → C-12 →
 | C-13 | caja-operaciones | 4 | ALTO | C-03, C-12 | `[~]` |
 | C-14 | cuentas-corrientes | 5 | ALTO | C-06, C-12 | `[~]` |
 | C-15 | gastos | 5 | MEDIO | C-03 | `[ ]` |
-| C-16 | dashboard | 6 | MEDIO | C-09, C-12, C-13, C-15 | `[ ]` |
+| C-16 | dashboard | 6 | MEDIO | C-09, C-12, C-13, C-15 | `[x]` |
 | C-17 | reportes-ventas | 6 | MEDIO | C-12 | `[ ]` |
 | C-18 | reportes-financieros | 6 | MEDIO | C-12, C-15 | `[ ]` |
 | C-19 | rentabilidad | 6 | MEDIO | C-09, C-12, C-15 | `[ ]` |

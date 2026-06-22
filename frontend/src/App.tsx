@@ -12,6 +12,7 @@ import { StockPage } from '@/pages/StockPage'
 import { SoportePage } from '@/pages/SoportePage'
 import { PosPage } from '@/pages/PosPage'
 import { GastosPage } from '@/pages/GastosPage'
+import { DashboardPage } from '@/pages/DashboardPage'
 
 function SuperadminRoute({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated } = useAuthStore()
@@ -37,7 +38,14 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<div>BASILE Dashboard</div>} />
+        <Route
+          path="/"
+          element={
+            <PrivateRoute>
+              <DashboardPage />
+            </PrivateRoute>
+          }
+        />
         <Route path="/login" element={<div>Login</div>} />
         <Route
           path="/configuracion/empresa"
