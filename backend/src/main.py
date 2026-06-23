@@ -91,6 +91,7 @@ from src.modules.notificacion.router import router as notificacion_router
 from src.modules.gasto.router import router as gasto_router
 from src.modules.soporte.router import router as soporte_router
 from src.modules.dashboard.router import router as dashboard_router
+from src.modules.rentabilidad.router import router as rentabilidad_router
 
 auth_dep = [Depends(require_auth)]
 
@@ -111,6 +112,7 @@ app.include_router(notificacion_router, prefix="/notificacion", tags=["notificac
 app.include_router(gasto_router, prefix="/gasto", tags=["gasto"], dependencies=auth_dep)
 app.include_router(soporte_router, prefix="/soporte", tags=["soporte"], dependencies=auth_dep)
 app.include_router(dashboard_router, prefix="/dashboard", tags=["dashboard"], dependencies=auth_dep)
+app.include_router(rentabilidad_router, prefix="/rentabilidad", tags=["rentabilidad"], dependencies=auth_dep)
 
 # Health router (included early for monitoring) — public
 from src.modules.health.router import router as health_router
