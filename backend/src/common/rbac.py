@@ -120,6 +120,9 @@ PERMISSION_MATRIX: dict[str, set[str]] = {
         "clientes:create",
         "clientes:read",
         "productos:read",
+        # C-14 PO Decision: cajero can register payments (KB US-015)
+        "cuenta-corriente:read",
+        "cuenta-corriente:update",
     },
     "vendedor": {
         "ventas:create",

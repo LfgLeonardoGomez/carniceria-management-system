@@ -16,6 +16,7 @@ import { DashboardPage } from '@/pages/DashboardPage'
 import { ReportesVentasPage } from '@/pages/ReportesVentasPage'
 import { ReportesFinancierosPage } from '@/pages/ReportesFinancierosPage'
 import { RentabilidadPage } from '@/pages/RentabilidadPage'
+import { CuentasCorrientesPage } from '@/pages/CuentasCorrientesPage'
 
 function SuperadminRoute({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated } = useAuthStore()
@@ -231,6 +232,14 @@ function App() {
           element={
             <PrivateRoute>
               <RentabilidadPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/cuentas-corrientes/:clienteId"
+          element={
+            <PrivateRoute>
+              <CuentasCorrientesPage />
             </PrivateRoute>
           }
         />
