@@ -145,18 +145,18 @@ Cada regla tiene un código único `RN-{DOMINIO}-{NN}` para trazabilidad.
 
 ## Dominio: Auditoría (RN-AUD)
 
-- **RN-AUD-01**: El sistema debe registrar: usuario, acción, fecha y hora de cada operación relevante.
-- **RN-AUD-02**: Los registros de auditoría son inmutables y no pueden ser eliminados por ningún rol.
+- **RN-AUD-01**: El sistema debe registrar en la tabla `Auditoria`, por cada operación relevante, los siguientes campos: `usuario_id`, `accion`, `entidad_tipo`, `entidad_id`, `payload` (snapshot JSON con método HTTP, path, query, body truncado a 4KB, status code y duración en ms), `fecha`, `hora` y `empresa_id`. La captura la realiza un middleware FastAPI sobre los métodos mutantes (POST, PUT, PATCH, DELETE) exitosos (status 2xx).
+- **RN-AUD-02**: Los registros de auditoría son inmutables: el `service` no expone métodos de `update` ni `delete`, y la API sólo expone `GET /auditoria`. Ningún rol, incluido el administrador, puede modificar ni eliminar un registro de auditoría existente. Las inserciones son atómicas con la operación que las origina para garantizar trazabilidad completa.
 
 ---
 
 ## Dominio: Notificaciones (RN-NOTIF)
 
-- **RN-NOTIF-01**: Stock bajo: alerta cuando stock actual <= stock mínimo (configurable).
-- **RN-NOTIF-02**: Stock crítico: alerta más severa cuando stock actual es 0 o próximo a agotarse (umbral no definido).
-- **RN-NOTIF-03**: Deudas vencidas: alerta cuando un cliente tiene deudas no pagadas pasada una fecha de vencimiento (plazo no definido).
-- **RN-NOTIF-04**: Gastos elevados: alerta cuando un gasto supera un umbral (no definido).
-- **RN-NOTIF-05**: Diferencias de caja: alerta cuando hay discrepancia entre caja esperada y caja real al cierre.
+- **RN-NOTIF-01**: Stock bajo: se genera una notificación de tipo `stock_bajo` cuando el `stock_actual` de un producto es menor o igual a su `stock_minimo` configurable. El trigger se evalúa dentro del mismo flujo de venta o movimiento de stock, garantizando consistencia ACID.
+- **RN-NOTIF-02**: Stock crítico: se genera una notificación de tipo `stock_critico` cuando el `stock_actual` de un producto es cero o negativo. Es la alerta de mayor severidad para reposición inmediata.
+- **RN-NOTIF-03**: Deudas vencidas: se genera una notificación de tipo `deuda_vencida` cuando una cuenta corriente de cliente tiene saldo deudor y la última transacción supera los `dias_vencimiento` configurados para la empresa. Si la empresa no configuró el umbral, el trigger no se ejecuta (configuración opcional).
+- **RN-NOTIF-04**: Gastos elevados: se genera una notificación de tipo `gasto_elevado` cuando se registra un gasto cuyo importe supera el `umbral_gasto` configurado para la empresa. Si la empresa no configuró el umbral, el trigger no se ejecuta.
+- **RN-NOTIF-05**: Diferencias de caja: se genera una notificación de tipo `diferencia_caja` cuando al cierre de caja la `diferencia_total` (caja real menos caja esperada) es distinta de cero. La notificación incluye el monto de la diferencia y el identificador del cierre afectado.
 
 ---
 

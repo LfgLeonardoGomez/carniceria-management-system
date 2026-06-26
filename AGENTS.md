@@ -81,6 +81,8 @@ Reglas globales ya definidas en `~/.claude/CLAUDE.md` (orquestador, governance, 
 - Activar RLS en TODAS las tablas de negocio como capa de seguridad adicional
 - Usar transacciones ACID obligatorias para: ventas, caja (apertura/cierre), stock (ajustes), desposte
 - Índices obligatorios en: `empresa_id`, `fecha`, `cliente_id`, `producto_id`, `estado`
+- Tablas `auditoria` y `notificacion` también deben tener RLS activo con política de filtro por `empresa_id`
+- Tabla `auditoria` es **inmutable**: no exponer endpoints ni servicios de `update` ni `delete`. La única operación permitida es `INSERT` (realizado por el middleware de auditoría)
 
 ### Frontend React/SPA
 - **NUNCA** usar `any` → TypeScript `strict: true`; usar `unknown` + type narrowing

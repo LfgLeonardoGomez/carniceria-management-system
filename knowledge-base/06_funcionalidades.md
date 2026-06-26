@@ -310,25 +310,31 @@ Organizadas por **épica** y luego por **historia de usuario** (formato US-NNN).
 ### US-020 — Consultar auditoría
 **Como** Administrador  
 **Quiero** ver un registro de todas las acciones realizadas por los usuarios  
-**Para** detectar errores o fraudes.
+**Para** detectar errores o fraudes y demostrar cumplimiento.
 
 **Criterios de aceptación**:
-- [ ] CA-1: Registra: usuario, acción, fecha, hora.
-- [ ] CA-2: Registros inmutables.
-- [ ] CA-3: Filtros por usuario, fecha y tipo de acción.
+- [ ] CA-1: Registra automáticamente cada operación relevante (POST/PUT/PATCH/DELETE exitoso) con: usuario, acción, fecha, hora, entidad afectada, payload completo y duración.
+- [ ] CA-2: Registros inmutables: no se permite update ni delete por ningún rol.
+- [ ] CA-3: Filtros por usuario, rango de fechas, tipo de acción y tipo de entidad.
+- [ ] CA-4: Solo accesible para usuarios con rol `admin` o `superadmin`.
+- [ ] CA-5: Aislamiento multi-tenant estricto: un admin sólo ve la auditoría de su empresa.
+- [ ] CA-6: Exportación de la lista filtrada a CSV o JSON para análisis externo.
 
 **Reglas relacionadas**: RN-AUD-01, RN-AUD-02
 
 ### US-021 — Recibir notificaciones
 **Como** cualquier usuario  
-**Quiero** recibir alertas del sistema  
-**Para** reaccionar ante situaciones que requieren atención.
+**Quiero** recibir alertas del sistema en el header de la app  
+**Para** reaccionar ante situaciones que requieren atención sin tener que navegar a otras pantallas.
 
 **Criterios de aceptación**:
-- [ ] CA-1: Alertas de stock bajo y crítico.
-- [ ] CA-2: Alertas de deudas vencidas en cuenta corriente.
-- [ ] CA-3: Alertas de gastos elevados.
-- [ ] CA-4: Alertas de diferencias en caja.
-- [ ] CA-5: Las notificaciones se visualizan en la UI y pueden marcarse como leídas.
+- [ ] CA-1: Alertas de stock bajo y stock crítico cuando un producto alcanza o cae por debajo del stock mínimo.
+- [ ] CA-2: Alertas de deudas vencidas en cuenta corriente (cuando la empresa configuró días de vencimiento).
+- [ ] CA-3: Alertas de gastos elevados (cuando la empresa configuró un umbral).
+- [ ] CA-4: Alertas de diferencias de caja al cierre.
+- [ ] CA-5: El badge de notificaciones muestra el contador de no leídas y se actualiza automáticamente.
+- [ ] CA-6: El panel desplegable lista las últimas notificaciones con tiempo relativo ("hace 5 min").
+- [ ] CA-7: El usuario puede marcar una notificación como leída o marcar todas a la vez.
+- [ ] CA-8: La generación de la notificación es síncrona con la operación que la origina, garantizando consistencia ACID.
 
 **Reglas relacionadas**: RN-NOTIF-01 a RN-NOTIF-05

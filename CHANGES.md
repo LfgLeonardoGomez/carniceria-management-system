@@ -491,7 +491,7 @@ C-01 → C-02 → C-03 → C-05 → C-06 → C-08 → C-09 → C-10 → C-12 →
 > Auditoría inmutable y sistema de notificaciones. Se implementa al final porque necesita que todas las demás entidades y flujos existan para registrarlas correctamente.
 
 ### [C-20] `auditoria-notificaciones`
-- **Estado**: `[ ]` pendiente — **stub vacío** en `backend/src/modules/auditoria/` y `notificacion/` (routers de 3 líneas, models TODO)
+- **Estado**: `[x]` completado — middleware de auditoría inmutable, módulo de notificaciones, panel frontend con badge y ruta de admin con filtros y exportación CSV/JSON. 37 tests nuevos pasando (5 backend + 32 frontend).
 - **Scope**:
   - Tabla `Auditoria` — `usuario_id`, `accion` (enum/string: CREAR_VENTA, ELIMINAR_PRODUCTO, etc.), `entidad_tipo`, `entidad_id`, `payload` (JSON snapshot), `fecha`, `hora`.
   - Middleware/interceptor global que captura operaciones relevantes y escribe en auditoría (RN-AUD-01).
@@ -537,7 +537,7 @@ C-01 → C-02 → C-03 → C-05 → C-06 → C-08 → C-09 → C-10 → C-12 →
 | C-17 | reportes-ventas | 6 | MEDIO | C-12 | `[ ]` |
 | C-18 | reportes-financieros | 6 | MEDIO | C-12, C-15 | `[ ]` |
 | C-19 | rentabilidad | 6 | MEDIO | C-09, C-12, C-15 | `[ ]` |
-| C-20 | auditoria-notificaciones | 7 | ALTO | C-10, C-12, C-13, C-14, C-15 | `[ ]` |
+| C-20 | auditoria-notificaciones | 7 | ALTO | C-10, C-12, C-13, C-14, C-15 | `[x]` |
 
 **Leyenda**: `[x]` = completado | `[~]` = parcial / con deuda técnica | `[ ]` = pendiente
 

@@ -15,7 +15,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 # Prevent SQLModel metadata conflicts by aliasing modules.* to src.modules.*
 # (existing tests use modules.* imports via sys.path.insert)
 import importlib
-for _mod_name in ["empresa.models", "auth.models", "usuario.models", "producto.models", "desposte.models", "gasto.models", "compra.models", "stock.models", "cliente.models", "proveedor.models", "venta.models", "caja.models", "auditoria.models"]:
+for _mod_name in ["empresa.models", "auth.models", "usuario.models", "producto.models", "desposte.models", "gasto.models", "compra.models", "stock.models", "cliente.models", "proveedor.models", "venta.models", "caja.models", "auditoria.models", "notificacion.models"]:
     try:
         _src_mod = importlib.import_module(f"src.modules.{_mod_name}")
         sys.modules[f"modules.{_mod_name}"] = _src_mod
@@ -124,6 +124,13 @@ async def client(db_connection, init_db) -> AsyncGenerator[AsyncClient, None]:
 
     app.dependency_overrides[get_db] = override_get_db
 
+    # El middleware de auditoría abre su propia sesión con AsyncSessionLocal,
+    # que apunta a la DB de producción. En tests queremos que use la misma
+    # conexión que la transacción del test, así que registramos un factory
+    # alternativo en ``app.state`` que el middleware detecta y prefiere.
+    from src.modules.auditoria.middleware import AUDIT_SESSION_FACTORY_KEY
+    setattr(app.state, AUDIT_SESSION_FACTORY_KEY, session_factory)
+
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://testserver",
@@ -131,3 +138,5 @@ async def client(db_connection, init_db) -> AsyncGenerator[AsyncClient, None]:
         yield ac
 
     app.dependency_overrides.clear()
+    if hasattr(app.state, AUDIT_SESSION_FACTORY_KEY):
+        delattr(app.state, AUDIT_SESSION_FACTORY_KEY)

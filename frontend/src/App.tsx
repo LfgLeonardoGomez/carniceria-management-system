@@ -1,5 +1,11 @@
+import type { ReactNode } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
+import { AppLayout } from '@/components/layout/AppLayout'
+import { LoginLayout } from '@/components/layout/LoginLayout'
+import { LoginPage } from '@/pages/LoginPage'
+import { RecuperarContrasenaPage } from '@/pages/RecuperarContrasenaPage'
+import { RestablecerContrasenaPage } from '@/pages/RestablecerContrasenaPage'
 import { EmpresaConfigPage } from '@/pages/EmpresaConfigPage'
 import { UsuariosPage } from '@/pages/UsuariosPage'
 import { PerfilPage } from '@/pages/PerfilPage'
@@ -17,25 +23,38 @@ import { ReportesVentasPage } from '@/pages/ReportesVentasPage'
 import { ReportesFinancierosPage } from '@/pages/ReportesFinancierosPage'
 import { RentabilidadPage } from '@/pages/RentabilidadPage'
 import { CuentasCorrientesPage } from '@/pages/CuentasCorrientesPage'
+import { AuditoriaPage } from '@/pages/AuditoriaPage'
 
-function SuperadminRoute({ children }: { children: React.ReactNode }) {
+function SuperadminRoute({ children }: { children: ReactNode }) {
   const { user, isAuthenticated } = useAuthStore()
   if (!isAuthenticated) return <Navigate to="/login" />
   if (user?.rol !== 'superadmin') return <Navigate to="/" />
   return <>{children}</>
 }
 
-function AdminRoute({ children }: { children: React.ReactNode }) {
+function AdminRoute({ children }: { children: ReactNode }) {
   const { user, isAuthenticated } = useAuthStore()
   if (!isAuthenticated) return <Navigate to="/login" />
   if (user?.rol !== 'admin' && user?.rol !== 'superadmin') return <Navigate to="/" />
   return <>{children}</>
 }
 
-function PrivateRoute({ children }: { children: React.ReactNode }) {
+function PrivateRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated } = useAuthStore()
   if (!isAuthenticated) return <Navigate to="/login" />
   return <>{children}</>
+}
+
+function PrivateShell({ children }: { children: ReactNode }) {
+  return (
+    <PrivateRoute>
+      <AppLayout>{children}</AppLayout>
+    </PrivateRoute>
+  )
+}
+
+function PublicShell({ children }: { children: ReactNode }) {
+  return <LoginLayout>{children}</LoginLayout>
 }
 
 function App() {
@@ -45,17 +64,42 @@ function App() {
         <Route
           path="/"
           element={
-            <PrivateRoute>
+            <PrivateShell>
               <DashboardPage />
-            </PrivateRoute>
+            </PrivateShell>
           }
         />
-        <Route path="/login" element={<div>Login</div>} />
+        <Route
+          path="/login"
+          element={
+            <PublicShell>
+              <LoginPage />
+            </PublicShell>
+          }
+        />
+        <Route
+          path="/recuperar-contrasena"
+          element={
+            <PublicShell>
+              <RecuperarContrasenaPage />
+            </PublicShell>
+          }
+        />
+        <Route
+          path="/restablecer-contrasena"
+          element={
+            <PublicShell>
+              <RestablecerContrasenaPage />
+            </PublicShell>
+          }
+        />
         <Route
           path="/configuracion/empresa"
           element={
             <AdminRoute>
-              <EmpresaConfigPage />
+              <AppLayout>
+                <EmpresaConfigPage />
+              </AppLayout>
             </AdminRoute>
           }
         />
@@ -63,7 +107,9 @@ function App() {
           path="/usuarios"
           element={
             <AdminRoute>
-              <UsuariosPage />
+              <AppLayout>
+                <UsuariosPage />
+              </AppLayout>
             </AdminRoute>
           }
         />
@@ -71,176 +117,188 @@ function App() {
           path="/admin/soporte"
           element={
             <SuperadminRoute>
-              <SoportePage />
+              <AppLayout>
+                <SoportePage />
+              </AppLayout>
             </SuperadminRoute>
           }
         />
         <Route
           path="/productos"
           element={
-            <PrivateRoute>
+            <PrivateShell>
               <ProductosPage />
-            </PrivateRoute>
+            </PrivateShell>
           }
         />
         <Route
           path="/clientes"
           element={
-            <PrivateRoute>
+            <PrivateShell>
               <ClientesPage />
-            </PrivateRoute>
+            </PrivateShell>
           }
         />
         <Route
           path="/clientes/:id"
           element={
-            <PrivateRoute>
+            <PrivateShell>
               <ClienteDetailPage />
-            </PrivateRoute>
+            </PrivateShell>
           }
         />
         <Route
           path="/proveedores"
           element={
-            <PrivateRoute>
+            <PrivateShell>
               <ProveedoresPage />
-            </PrivateRoute>
+            </PrivateShell>
           }
         />
         <Route
           path="/proveedores/:id"
           element={
-            <PrivateRoute>
+            <PrivateShell>
               <ProveedorDetailPage />
-            </PrivateRoute>
+            </PrivateShell>
           }
         />
         <Route
           path="/proveedores/:id/editar"
           element={
-            <PrivateRoute>
+            <PrivateShell>
               <ProveedorEditPage />
-            </PrivateRoute>
+            </PrivateShell>
           }
         />
         <Route
           path="/perfil"
           element={
-            <PrivateRoute>
+            <PrivateShell>
               <PerfilPage />
-            </PrivateRoute>
+            </PrivateShell>
           }
         />
         <Route
           path="/compras"
           element={
-            <PrivateRoute>
+            <PrivateShell>
               <ComprasPage />
-            </PrivateRoute>
+            </PrivateShell>
           }
         />
         <Route
           path="/compras/nueva"
           element={
-            <PrivateRoute>
+            <PrivateShell>
               <CompraEditPage />
-            </PrivateRoute>
+            </PrivateShell>
           }
         />
         <Route
           path="/compras/:id"
           element={
-            <PrivateRoute>
+            <PrivateShell>
               <CompraDetailPage />
-            </PrivateRoute>
+            </PrivateShell>
           }
         />
         <Route
           path="/compras/:id/editar"
           element={
-            <PrivateRoute>
+            <PrivateShell>
               <CompraEditPage />
-            </PrivateRoute>
+            </PrivateShell>
           }
         />
         <Route
           path="/despostes"
           element={
-            <PrivateRoute>
+            <PrivateShell>
               <DespostesPage />
-            </PrivateRoute>
+            </PrivateShell>
           }
         />
         <Route
           path="/despostes/nuevo"
           element={
-            <PrivateRoute>
+            <PrivateShell>
               <DesposteNuevoPage />
-            </PrivateRoute>
+            </PrivateShell>
           }
         />
         <Route
           path="/despostes/:id"
           element={
-            <PrivateRoute>
+            <PrivateShell>
               <DesposteDetailPage />
-            </PrivateRoute>
+            </PrivateShell>
           }
         />
         <Route
           path="/stock"
           element={
-            <PrivateRoute>
+            <PrivateShell>
               <StockPage />
-            </PrivateRoute>
+            </PrivateShell>
           }
         />
         <Route
           path="/pos"
           element={
-            <PrivateRoute>
+            <PrivateShell>
               <PosPage />
-            </PrivateRoute>
+            </PrivateShell>
           }
         />
         <Route
           path="/gastos"
           element={
-            <PrivateRoute>
+            <PrivateShell>
               <GastosPage />
-            </PrivateRoute>
+            </PrivateShell>
           }
         />
         <Route
           path="/reportes"
           element={
-            <PrivateRoute>
+            <PrivateShell>
               <ReportesVentasPage />
-            </PrivateRoute>
+            </PrivateShell>
           }
         />
         <Route
           path="/reportes/financieros"
           element={
-            <PrivateRoute>
+            <PrivateShell>
               <ReportesFinancierosPage />
-            </PrivateRoute>
+            </PrivateShell>
           }
         />
         <Route
           path="/rentabilidad"
           element={
-            <PrivateRoute>
+            <PrivateShell>
               <RentabilidadPage />
-            </PrivateRoute>
+            </PrivateShell>
           }
         />
         <Route
           path="/cuentas-corrientes/:clienteId"
           element={
-            <PrivateRoute>
+            <PrivateShell>
               <CuentasCorrientesPage />
-            </PrivateRoute>
+            </PrivateShell>
+          }
+        />
+        <Route
+          path="/auditoria"
+          element={
+            <AdminRoute>
+              <AppLayout>
+                <AuditoriaPage />
+              </AppLayout>
+            </AdminRoute>
           }
         />
         <Route path="*" element={<div>404</div>} />

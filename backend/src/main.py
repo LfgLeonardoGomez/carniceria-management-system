@@ -48,6 +48,14 @@ async def log_requests(request: Request, call_next):
     )
     return response
 
+# Auditoría automática: captura POST/PUT/PATCH/DELETE exitosos y los
+# registra en la tabla `auditoria` con un snapshot del request.
+from src.modules.auditoria.middleware import audit_middleware
+
+@app.middleware("http")
+async def audit_request_middleware(request: Request, call_next):
+    return await audit_middleware(request, call_next)
+
 # CORS
 app.add_middleware(
     CORSMiddleware,
