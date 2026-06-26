@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.caja.models import Caja, MovimientoCaja
+from src.modules.notificacion import service as notificacion_service
 from src.common.exceptions import ConflictException, NotFoundException
 
 # ---------------------------------------------------------------------------
@@ -314,6 +315,10 @@ async def cerrar_caja(
     # TODO(C-20): if diferencias.diferencia_significativa, fire a notificacion
     # (tipo="diferencia_caja"). The notificacion module is a C-20 stub today, so this
     # change only computes/returns the flag and leaves this seam for the future trigger.
+    if diferencias.diferencia_significativa:
+        await notificacion_service.generar_diferencia_caja(
+            db, empresa_id, caja.id, diferencias.diferencia_total
+        )
 
     await db.commit()
     await db.refresh(caja)

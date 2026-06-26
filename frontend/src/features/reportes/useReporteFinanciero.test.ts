@@ -5,8 +5,8 @@
  *   7.1 RED — hook fetches /reportes/financieros with group_by + date params;
  *             returns typed rows; null indicators remain null (not coerced to 0)
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, waitFor, act } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { cleanup, renderHook, waitFor, act } from '@testing-library/react'
 import type { ReporteFinancieroResponse, GroupBy } from './types'
 
 // ---------------------------------------------------------------------------
@@ -55,6 +55,11 @@ const mockResponseFull: ReporteFinancieroResponse = {
 describe('useReporteFinanciero', () => {
   beforeEach(() => {
     vi.resetAllMocks()
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
   })
 
   it('fetches /reportes/financieros with group_by and returns rows', async () => {

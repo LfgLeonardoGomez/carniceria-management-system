@@ -10,7 +10,7 @@
  *          fecha_hasta: undefined (not empty string)
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import type { ReportesFilters } from './types'
 
 // ---------------------------------------------------------------------------
@@ -41,6 +41,8 @@ describe('ReportesFilters', () => {
 
     render(<ReportesFilters onFilter={onFilter} />)
 
+    await waitFor(() => expect(screen.getByText(/Juan/)).toBeInTheDocument())
+
     expect(screen.getByLabelText(/fecha desde/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/fecha hasta/i)).toBeInTheDocument()
     expect(screen.getByRole('combobox', { name: /cliente/i })).toBeInTheDocument()
@@ -52,6 +54,8 @@ describe('ReportesFilters', () => {
     const onFilter = vi.fn()
 
     render(<ReportesFilters onFilter={onFilter} />)
+
+    await waitFor(() => expect(screen.getByText(/Juan/)).toBeInTheDocument())
 
     fireEvent.change(screen.getByLabelText(/fecha desde/i), {
       target: { value: '2024-06-01' },
@@ -75,6 +79,8 @@ describe('ReportesFilters', () => {
 
     render(<ReportesFilters onFilter={onFilter} />)
 
+    await waitFor(() => expect(screen.getByText(/Juan/)).toBeInTheDocument())
+
     const select = screen.getByRole('combobox', { name: /cliente/i })
     // Select "All clients" (empty value)
     fireEvent.change(select, { target: { value: '' } })
@@ -93,6 +99,8 @@ describe('ReportesFilters', () => {
     const onFilter = vi.fn()
 
     render(<ReportesFilters onFilter={onFilter} />)
+
+    await waitFor(() => expect(screen.getByText(/Juan/)).toBeInTheDocument())
 
     // Do not fill any date fields — just click apply
     fireEvent.click(screen.getByRole('button', { name: /aplicar|apply/i }))

@@ -2,7 +2,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from modules.auth.models import Rol
+from src.modules.auth.models import Rol
 
 ROLES = [
     (uuid.uuid5(uuid.NAMESPACE_DNS, "basile.rol.superadmin"), "superadmin"),
@@ -10,6 +10,7 @@ ROLES = [
     (uuid.uuid5(uuid.NAMESPACE_DNS, "basile.rol.encargado"), "encargado"),
     (uuid.uuid5(uuid.NAMESPACE_DNS, "basile.rol.cajero"), "cajero"),
     (uuid.uuid5(uuid.NAMESPACE_DNS, "basile.rol.vendedor"), "vendedor"),
+    (uuid.uuid5(uuid.NAMESPACE_DNS, "basile.rol.desposte"), "desposte"),
 ]
 
 

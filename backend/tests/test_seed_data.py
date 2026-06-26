@@ -21,7 +21,7 @@ def test_seed_roles():
         seed_roles(session)
         from modules.auth.models import Rol
         count = session.query(Rol).count()
-        assert count == 5, f"Esperaba 5 roles, hay {count}"
+        assert count == 6, f"Esperaba 6 roles, hay {count}"
 
 
 def test_seed_categorias_producto():
@@ -45,6 +45,61 @@ def test_seed_categorias_producto():
             CategoriaProducto.empresa_id == empresa.id
         ).count()
         assert count == 5, f"Esperaba 5 categorías, hay {count}"
+
+
+def test_seed_permisos_pobla_matriz():
+    """C-22: seed_permisos popula rol.permisos desde PERMISSION_MATRIX."""
+    from database.seeds.roles import seed_roles
+    from database.seeds.permisos import seed_permisos
+    from modules.auth.models import Rol
+
+    engine = create_engine("sqlite:///:memory:", echo=False)
+    SQLModel.metadata.create_all(engine)
+    SessionLocal = sessionmaker(bind=engine)
+    with SessionLocal() as session:
+        seed_roles(session)
+        seed_permisos(session)
+
+        admin = session.query(Rol).filter(Rol.nombre == "admin").first()
+        assert admin is not None
+        assert admin.permisos is not None, "rol.permisos no debe ser null"
+        assert "productos" in admin.permisos
+        assert "desposte" in admin.permisos
+        assert "desposte:read" not in admin.permisos, (
+            "Las operaciones se guardan agrupadas por recurso, no como string 'recurso:op'"
+        )
+        assert "read" in admin.permisos["productos"]
+
+        cajero = session.query(Rol).filter(Rol.nombre == "cajero").first()
+        assert cajero.permisos is not None
+        assert "productos" in cajero.permisos
+        assert "usuarios" not in cajero.permisos, "cajero NO debe tener permisos de usuarios"
+
+        desposte = session.query(Rol).filter(Rol.nombre == "desposte").first()
+        assert desposte is not None
+        assert desposte.permisos is not None
+        assert "desposte" in desposte.permisos
+        assert "ventas" not in desposte.permisos, "desposte NO debe tener permisos de ventas"
+
+
+def test_seed_permisos_es_idempotente():
+    """C-22: ejecutar seed_permisos dos veces no rompe nada."""
+    from database.seeds.roles import seed_roles
+    from database.seeds.permisos import seed_permisos
+    from modules.auth.models import Rol
+
+    engine = create_engine("sqlite:///:memory:", echo=False)
+    SQLModel.metadata.create_all(engine)
+    SessionLocal = sessionmaker(bind=engine)
+    with SessionLocal() as session:
+        seed_roles(session)
+        seed_permisos(session)
+        seed_permisos(session)
+
+        admin = session.query(Rol).filter(Rol.nombre == "admin").first()
+        assert admin.permisos is not None
+        # Tamaño estable: la matriz no cambia entre ejecuciones
+        assert len(admin.permisos["productos"]) == 4  # read, create, update, delete
 
 
 def test_seed_tipos_corte():
@@ -88,7 +143,7 @@ def test_seed_idempotency():
         seed_roles(session)
         from modules.auth.models import Rol
         count = session.query(Rol).count()
-        assert count == 5, f"Idempotencia falló: {count} roles tras doble ejecución"
+        assert count == 6, f"Idempotencia falló: {count} roles tras doble ejecución"
 
     with SessionLocal() as session:
         from modules.empresa.models import Empresa

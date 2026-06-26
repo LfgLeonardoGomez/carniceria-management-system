@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import { useUsuarioStore } from '@/stores/usuarioStore'
@@ -22,6 +22,8 @@ export function PerfilPage() {
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [passwordSuccess, setPasswordSuccess] = useState(false)
   const [profileSuccess, setProfileSuccess] = useState(false)
+  const passwordSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const profileSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -48,13 +50,27 @@ export function PerfilPage() {
     }
   }, [error, clearError])
 
+  useEffect(() => {
+    return () => {
+      if (passwordSuccessTimeoutRef.current) {
+        clearTimeout(passwordSuccessTimeoutRef.current)
+      }
+      if (profileSuccessTimeoutRef.current) {
+        clearTimeout(profileSuccessTimeoutRef.current)
+      }
+    }
+  }, [])
+
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     clearError()
     try {
       await updatePerfil(form)
       setProfileSuccess(true)
-      setTimeout(() => setProfileSuccess(false), 4000)
+      if (profileSuccessTimeoutRef.current) {
+        clearTimeout(profileSuccessTimeoutRef.current)
+      }
+      profileSuccessTimeoutRef.current = setTimeout(() => setProfileSuccess(false), 4000)
       // Sync auth store if email changed
       if (user && form.email !== user.email) {
         setUser({ ...user, email: form.email, nombre: form.nombre, apellido: form.apellido })
@@ -85,7 +101,10 @@ export function PerfilPage() {
       })
       setPasswordSuccess(true)
       setPasswordForm({ contrasena_actual: '', contrasena_nueva: '', confirmacion: '' })
-      setTimeout(() => setPasswordSuccess(false), 4000)
+      if (passwordSuccessTimeoutRef.current) {
+        clearTimeout(passwordSuccessTimeoutRef.current)
+      }
+      passwordSuccessTimeoutRef.current = setTimeout(() => setPasswordSuccess(false), 4000)
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { detail?: string } } }
       setPasswordError(axiosErr.response?.data?.detail || 'Error al cambiar contraseña')
@@ -130,12 +149,12 @@ export function PerfilPage() {
           />
         </div>
         <div className="form-group">
-          <label>Rol</label>
-          <input value={user?.rol || ''} disabled />
+          <label htmlFor="perfil-rol">Rol</label>
+          <input id="perfil-rol" value={user?.rol || ''} disabled />
         </div>
         <div className="form-group">
-          <label>Empresa</label>
-          <input value={perfil?.empresa || ''} disabled />
+          <label htmlFor="perfil-empresa">Empresa</label>
+          <input id="perfil-empresa" value={perfil?.empresa || ''} disabled />
         </div>
         <button type="submit" disabled={loading}>
           {loading ? 'Guardando...' : 'Guardar cambios'}

@@ -34,6 +34,7 @@ def normalize_rol(rol_nombre: str | None) -> str | None:
         "encargado": "encargado",
         "cajero": "cajero",
         "vendedor": "vendedor",
+        "desposte": "desposte",
         "superadmin": "superadmin",
     }
     return mapping.get(lowered)
@@ -128,6 +129,15 @@ PERMISSION_MATRIX: dict[str, set[str]] = {
         "ventas:create",
         "ventas:read",
         "productos:read",
+    },
+    "desposte": {
+        # Operador de cámara de despostes — solo el módulo de desposte
+        # + lectura de productos/stock para registrar cortes.
+        "desposte:create",
+        "desposte:read",
+        "desposte:update",
+        "productos:read",
+        "stock:read",
     },
 }
 

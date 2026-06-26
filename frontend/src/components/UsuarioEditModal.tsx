@@ -51,7 +51,7 @@ export function UsuarioEditModal({ usuario, onSubmit, onCancel, loading, error }
     <div className="modal-overlay" onClick={onCancel} role="dialog" aria-modal="true">
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h2>Editar usuario</h2>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <div className="form-group">
             <label htmlFor="edit-nombre">Nombre</label>
             <input

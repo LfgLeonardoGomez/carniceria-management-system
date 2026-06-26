@@ -2,7 +2,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from modules.desposte.models import TipoCorte
+from src.modules.desposte.models import TipoCorte
 
 TIPOS_CORTE = [
     (uuid.uuid5(uuid.NAMESPACE_DNS, "basile.corte.Asado"), "Asado"),

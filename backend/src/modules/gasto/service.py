@@ -15,6 +15,7 @@ from sqlalchemy import select, func, desc
 
 from src.modules.gasto.models import Gasto
 from src.modules.gasto.schemas import GastoCreate, GastoUpdate
+from src.modules.notificacion import service as notificacion_service
 from src.common.exceptions import NotFoundException
 
 
@@ -41,17 +42,26 @@ async def _get_gasto_de_empresa(
 async def _check_alerta_gasto_elevado(
     db: AsyncSession,
     empresa_id: uuid.UUID,
+    gasto_id: uuid.UUID,
     importe: Decimal,
 ) -> None:
     """
-    TODO (IN-04): Alertas de gastos elevados.
-    Implementación pendiente:
-      - Cargar threshold desde empresa.config['gasto_alerta_threshold']
-      - Si importe > threshold, crear notificación en tabla notificacion
-        o enviar evento al sistema de notificaciones.
-    Por ahora no hace nada — el seam está acá para facilitar la implementación futura.
+    Verifica si un gasto supera el umbral configurado y genera notificación.
     """
-    pass
+    from sqlalchemy import select
+    from src.modules.empresa.models import Empresa
+    result = await db.execute(select(Empresa).where(Empresa.id == empresa_id))
+    empresa = result.scalar_one_or_none()
+    if not empresa or not empresa.parametros_operativos:
+        return
+    umbral = empresa.parametros_operativos.get("umbral_gasto")
+    if umbral is None:
+        return
+    umbral_decimal = Decimal(str(umbral))
+    if importe > umbral_decimal:
+        await notificacion_service.generar_gasto_elevado(
+            db, empresa_id, gasto_id, importe, umbral_decimal
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -78,7 +88,7 @@ async def crear_gasto(
     await db.refresh(gasto)
 
     # Seam: check for elevated-gasto alert (IN-04)
-    await _check_alerta_gasto_elevado(db, empresa_id, gasto.importe)
+    await _check_alerta_gasto_elevado(db, empresa_id, gasto.id, gasto.importe)
 
     return gasto
 

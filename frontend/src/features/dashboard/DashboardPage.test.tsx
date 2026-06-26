@@ -65,6 +65,9 @@ describe('DashboardPage — rendering with data', () => {
   it('renders the page heading', async () => {
     renderDashboard()
     expect(screen.getByRole('heading', { name: /dashboard/i })).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.queryByText('Cargando indicadores...')).not.toBeInTheDocument(),
+    )
   })
 
   it('shows ventas_dia KPI card', async () => {

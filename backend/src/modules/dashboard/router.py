@@ -3,7 +3,7 @@
 All endpoints require authentication (get_current_user injected via main.py's
 auth dependency). No endpoint mutates state.
 """
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config.database import get_db
@@ -26,6 +26,11 @@ async def get_indicadores(
     db: AsyncSession = Depends(get_db),
 ) -> IndicadoresResponse:
     """Return operational and financial KPIs for the authenticated user's empresa."""
+    if current_user.empresa_id is None:
+        raise HTTPException(
+            status_code=403,
+            detail="El dashboard requiere una empresa asociada. Use /admin/soporte para impersonar un tenant.",
+        )
     empresa_id = current_user.empresa_id
     return await service.calcular_indicadores(
         db=db,
@@ -42,6 +47,11 @@ async def get_rankings(
     db: AsyncSession = Depends(get_db),
 ) -> RankingsResponse:
     """Return the top-N most-sold products by kilos for the current month."""
+    if current_user.empresa_id is None:
+        raise HTTPException(
+            status_code=403,
+            detail="El dashboard requiere una empresa asociada. Use /admin/soporte para impersonar un tenant.",
+        )
     empresa_id = current_user.empresa_id
     return await service.calcular_rankings(
         db=db,
@@ -57,6 +67,11 @@ async def get_graficos(
     db: AsyncSession = Depends(get_db),
 ) -> GraficosResponse:
     """Return chart series: daily/monthly sales, payment distribution, profit evolution."""
+    if current_user.empresa_id is None:
+        raise HTTPException(
+            status_code=403,
+            detail="El dashboard requiere una empresa asociada. Use /admin/soporte para impersonar un tenant.",
+        )
     empresa_id = current_user.empresa_id
     return await service.calcular_graficos(
         db=db,

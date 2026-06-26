@@ -3,12 +3,12 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from modules.auth.models import Usuario, Rol
-from modules.empresa.models import Empresa
-from core.security import hash_password
+from src.modules.auth.models import Usuario, Rol
+from src.modules.empresa.models import Empresa
+from src.core.security import hash_password
 
 
-SEED_SUPERADMIN_EMAIL = os.environ.get("SEED_SUPERADMIN_EMAIL", "superadmin@basile.local")
+SEED_SUPERADMIN_EMAIL = os.environ.get("SEED_SUPERADMIN_EMAIL", "superadmin@basile.app")
 SEED_SUPERADMIN_PASSWORD = os.environ.get("SEED_SUPERADMIN_PASSWORD", "BasileSuper123!")
 
 

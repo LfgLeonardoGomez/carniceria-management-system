@@ -8,8 +8,15 @@ from src.modules.auth.models import Usuario, Rol
 
 
 class TestPermissionMatrix:
-    def test_matrix_has_exactly_five_roles(self):
-        assert set(PERMISSION_MATRIX.keys()) == {"superadmin", "admin", "encargado", "cajero", "vendedor"}
+    def test_matrix_has_exactly_six_roles(self):
+        assert set(PERMISSION_MATRIX.keys()) == {
+            "superadmin",
+            "admin",
+            "encargado",
+            "cajero",
+            "vendedor",
+            "desposte",
+        }
 
     def test_superadmin_has_empresas_and_usuarios(self):
         perms = PERMISSION_MATRIX["superadmin"]
@@ -44,6 +51,20 @@ class TestPermissionMatrix:
         assert "ventas:read" in perms
         assert "caja:operate" not in perms
         assert "stock:read" not in perms
+
+    def test_desposte_only_desposte_module(self):
+        perms = PERMISSION_MATRIX["desposte"]
+        assert "desposte:read" in perms
+        assert "desposte:create" in perms
+        assert "desposte:update" in perms
+        assert "productos:read" in perms
+        assert "stock:read" in perms
+        # desposte NO debe tener acceso a ventas, caja, clientes ni admin
+        assert "ventas:create" not in perms
+        assert "caja:operate" not in perms
+        assert "clientes:read" not in perms
+        assert "usuarios:create" not in perms
+        assert "empresas:admin" not in perms
 
 
 class TestHasPermission:

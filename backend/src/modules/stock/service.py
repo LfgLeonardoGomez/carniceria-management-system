@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from src.modules.stock.models import MovimientoStock
 from src.modules.producto.models import Producto
+from src.modules.notificacion import service as notificacion_service
 from src.common.exceptions import NotFoundException, ConflictException
 
 
@@ -179,6 +180,19 @@ async def ajustar_stock(
     db.add(movimiento)
     await db.commit()
     await db.refresh(movimiento)
+
+    # Trigger notificaciones de stock bajo/crítico
+    producto = await _get_producto_de_empresa(db, empresa_id, producto_id)
+    stock_minimo = producto.stock_minimo or Decimal("0.000")
+    if stock_resultante <= Decimal("0.000"):
+        await notificacion_service.generar_stock_critico(
+            db, empresa_id, producto_id, producto.nombre, stock_resultante
+        )
+    elif stock_resultante <= stock_minimo:
+        await notificacion_service.generar_stock_bajo(
+            db, empresa_id, producto_id, producto.nombre, stock_resultante, stock_minimo
+        )
+
     return movimiento
 
 

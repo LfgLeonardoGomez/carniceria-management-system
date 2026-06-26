@@ -2,7 +2,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
-from modules.gasto.models import CategoriaGasto
+from src.modules.gasto.models import CategoriaGasto
 
 CATEGORIAS_GASTO = [
     (uuid.uuid5(uuid.NAMESPACE_DNS, "basile.gasto.Alquiler"), "Alquiler"),

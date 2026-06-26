@@ -475,9 +475,9 @@ class TestSuperadminCRUD:
         # Verificar registro en auditoría
         from src.modules.auditoria.models import Auditoria
         result = await db_session.execute(
-            select(Auditoria).where(Auditoria.action == "IMPERSONATE_ADMIN")
+            select(Auditoria).where(Auditoria.accion == "IMPERSONATE_ADMIN")
         )
         auditoria = result.scalar_one_or_none()
         assert auditoria is not None
-        assert auditoria.actor_id == superadmin.id
-        assert auditoria.target_empresa_id == empresa.id
+        assert auditoria.usuario_id == superadmin.id
+        assert auditoria.empresa_id == empresa.id

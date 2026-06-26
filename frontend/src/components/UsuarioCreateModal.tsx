@@ -46,7 +46,7 @@ export function UsuarioCreateModal({ onSubmit, onCancel, loading, error }: Usuar
     <div className="modal-overlay" onClick={onCancel} role="dialog" aria-modal="true">
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h2>Nuevo usuario</h2>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <div className="form-group">
             <label htmlFor="create-nombre">Nombre</label>
             <input

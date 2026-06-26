@@ -3,7 +3,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from modules.producto.models import CategoriaProducto
+from src.modules.producto.models import CategoriaProducto
 
 CATEGORIAS = [
     "Carne vacuna",

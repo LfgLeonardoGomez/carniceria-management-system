@@ -58,6 +58,17 @@ async def require_auth(
     request.state.empresa_id = current_user.empresa_id
 
 
+async def require_admin(
+    request: Request,
+    _: None = Depends(require_auth),
+) -> None:
+    """Dependency que exige rol admin o superadmin."""
+    current_user = request.state.current_user
+    rol = normalize_rol(current_user.rol.nombre if current_user.rol else None)
+    if rol not in ("admin", "superadmin"):
+        raise ForbiddenException("Se requiere rol administrador")
+
+
 async def require_superadmin(
     request: Request,
     _: None = Depends(require_auth),

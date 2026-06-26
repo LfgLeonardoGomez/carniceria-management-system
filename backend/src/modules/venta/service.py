@@ -16,7 +16,7 @@ from src.modules.stock.models import MovimientoStock
 from src.modules.stock.service import calcular_stock_actual
 from src.modules.caja.models import Caja, MovimientoCaja
 from src.modules.cuenta_corriente.models import CuentaCorriente
-from src.modules.auditoria.models import Auditoria
+from src.modules.auditoria import service as auditoria_service
 from src.modules.auth.models import Usuario
 from src.common.exceptions import NotFoundException, ConflictException, ForbiddenException
 
@@ -149,18 +149,20 @@ async def _obtener_caja_abierta(
 
 async def _registrar_auditoria(
     db: AsyncSession,
-    action: str,
+    accion: str,
     actor_id: uuid.UUID,
-    target_empresa_id: uuid.UUID,
+    empresa_id: uuid.UUID,
     details: str,
 ) -> None:
-    auditoria = Auditoria(
-        action=action,
-        actor_id=actor_id,
-        target_empresa_id=target_empresa_id,
-        details=details,
+    await auditoria_service.registrar(
+        db=db,
+        empresa_id=empresa_id,
+        usuario_id=actor_id,
+        accion=accion,
+        entidad_tipo="venta",
+        entidad_id=None,
+        payload={"details": details},
     )
-    db.add(auditoria)
 
 
 # ---------------------------------------------------------------------------
@@ -482,9 +484,9 @@ async def anular_venta(
     # Auditoría
     await _registrar_auditoria(
         db,
-        action="venta_anulada",
+        accion="venta_anulada",
         actor_id=current_user.id,
-        target_empresa_id=empresa_id,
+        empresa_id=empresa_id,
         details=f"Venta {venta.id} anulada por usuario {current_user.id}",
     )
 

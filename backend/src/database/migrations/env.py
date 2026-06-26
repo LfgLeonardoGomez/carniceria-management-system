@@ -3,6 +3,11 @@ import os
 import sys
 from logging.config import fileConfig
 
+# Add project root to path so 'src' package is importable
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
@@ -17,6 +22,7 @@ from src.modules.producto.models import CategoriaProducto, Producto  # noqa: F40
 from src.modules.cliente.models import Cliente  # noqa: F401
 from src.modules.proveedor.models import Proveedor  # noqa: F401
 from src.modules.auditoria.models import Auditoria  # noqa: F401
+from src.modules.notificacion.models import Notificacion  # noqa: F401
 from src.modules.desposte.models import Desposte, CorteDesposte  # noqa: F401
 from src.modules.venta.models import Venta, DetalleVenta, PagoVenta  # noqa: F401
 from src.modules.caja.models import Caja, MovimientoCaja  # noqa: F401

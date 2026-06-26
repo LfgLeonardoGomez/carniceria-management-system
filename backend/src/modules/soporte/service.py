@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from src.modules.empresa.models import Empresa
-from src.modules.auditoria.models import Auditoria
+from src.modules.auditoria import service as auditoria_service
 from src.core.security import create_access_token
 from src.common.exceptions import NotFoundException
 
@@ -40,15 +40,18 @@ async def impersonate_admin(
     access_token = create_access_token(token_data, expires_delta=timedelta(minutes=15))
 
     # Registrar auditoría
-    auditoria = Auditoria(
-        action="IMPERSONATE_ADMIN",
-        actor_id=superadmin_id,
-        target_empresa_id=empresa_id,
-        details=f"Impersonación como admin de empresa {empresa_id}",
-        ip_address=ip_address,
-        user_agent=user_agent,
+    await auditoria_service.registrar(
+        db=db,
+        empresa_id=empresa_id,
+        usuario_id=superadmin_id,
+        accion="IMPERSONATE_ADMIN",
+        entidad_tipo="empresa",
+        entidad_id=empresa_id,
+        payload={
+            "details": f"Impersonación como admin de empresa {empresa_id}",
+            "ip_address": ip_address,
+            "user_agent": user_agent,
+        },
     )
-    db.add(auditoria)
-    await db.commit()
 
     return access_token

@@ -1,35 +1,43 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { BrowserRouter } from 'react-router-dom'
+import { MemoryRouter } from 'react-router-dom'
 import { PerfilPage } from '@/pages/PerfilPage'
 
-const mockFetchPerfil = vi.fn()
+const mockFetchPerfil = vi.fn().mockResolvedValue(undefined)
 const mockUpdatePerfil = vi.fn().mockResolvedValue(undefined)
 const mockChangePassword = vi.fn().mockResolvedValue(undefined)
 const mockClearError = vi.fn()
 
-const mockUseUsuarioStore = vi.fn(() => ({
-  perfil: {
-    id: 'u-1',
-    nombre: 'Carlos',
-    apellido: 'López',
-    email: 'carlos@example.com',
-    rol: 'Administrador',
-    empresa: 'Carnicería Don Juan',
-  },
+const mockPerfil = {
+  id: 'u-1',
+  nombre: 'Carlos',
+  apellido: 'López',
+  email: 'carlos@example.com',
+  rol: 'Administrador',
+  empresa: 'Carnicería Don Juan',
+}
+
+const mockUsuarioStoreState = {
+  perfil: mockPerfil,
   loading: false,
   error: null,
   fetchPerfil: mockFetchPerfil,
   updatePerfil: mockUpdatePerfil,
   changePassword: mockChangePassword,
   clearError: mockClearError,
-}))
+}
 
-const mockUseAuthStore = vi.fn(() => ({
-  user: { id: 'u-1', email: 'carlos@example.com', nombre: 'Carlos', apellido: 'López', rol: 'Administrador' },
+const mockUseUsuarioStore = vi.fn(() => mockUsuarioStoreState)
+
+const mockUser = { id: 'u-1', email: 'carlos@example.com', nombre: 'Carlos', apellido: 'López', rol: 'Administrador' }
+
+const mockAuthStoreState = {
+  user: mockUser,
   isAuthenticated: true,
   setUser: vi.fn(),
-}))
+}
+
+const mockUseAuthStore = vi.fn(() => mockAuthStoreState)
 
 vi.mock('@/stores/usuarioStore', () => ({
   useUsuarioStore: () => mockUseUsuarioStore(),
@@ -46,9 +54,9 @@ describe('PerfilPage', () => {
 
   it('renders profile form with data', () => {
     render(
-      <BrowserRouter>
+      <MemoryRouter>
         <PerfilPage />
-      </BrowserRouter>
+      </MemoryRouter>
     )
 
     expect(screen.getByLabelText('Nombre')).toHaveValue('Carlos')
@@ -60,9 +68,9 @@ describe('PerfilPage', () => {
 
   it('submits profile update', async () => {
     render(
-      <BrowserRouter>
+      <MemoryRouter>
         <PerfilPage />
-      </BrowserRouter>
+      </MemoryRouter>
     )
 
     fireEvent.change(screen.getByLabelText('Nombre'), { target: { value: 'Carlos Andrés' } })
@@ -79,9 +87,9 @@ describe('PerfilPage', () => {
 
   it('validates password confirmation mismatch', async () => {
     render(
-      <BrowserRouter>
+      <MemoryRouter>
         <PerfilPage />
-      </BrowserRouter>
+      </MemoryRouter>
     )
 
     fireEvent.change(screen.getByLabelText('Contraseña actual'), { target: { value: 'oldpass' } })
@@ -97,9 +105,9 @@ describe('PerfilPage', () => {
 
   it('validates new password length', async () => {
     render(
-      <BrowserRouter>
+      <MemoryRouter>
         <PerfilPage />
-      </BrowserRouter>
+      </MemoryRouter>
     )
 
     fireEvent.change(screen.getByLabelText('Contraseña actual'), { target: { value: 'oldpass' } })
@@ -115,9 +123,9 @@ describe('PerfilPage', () => {
 
   it('submits password change when valid', async () => {
     render(
-      <BrowserRouter>
+      <MemoryRouter>
         <PerfilPage />
-      </BrowserRouter>
+      </MemoryRouter>
     )
 
     fireEvent.change(screen.getByLabelText('Contraseña actual'), { target: { value: 'oldpass' } })

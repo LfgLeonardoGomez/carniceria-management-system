@@ -1,0 +1,17 @@
+node_modules
+npm-debug.log
+pnpm-lock.yaml
+.env
+.env.local
+.env.*.local
+dist
+build
+.vite
+*.log
+.DS_Store
+.git
+.gitignore
+README.md
+openspec
+knowledge-base
+*.md

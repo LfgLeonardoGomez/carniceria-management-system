@@ -370,11 +370,12 @@ class TestAnularVenta:
         # Verificar auditoría
         result = await db_session.execute(
             select(Auditoria).where(
-                Auditoria.action == "venta_anulada",
+                Auditoria.accion == "venta_anulada",
+                Auditoria.empresa_id == empresa.id,
             )
         )
         audit = result.scalar_one()
-        assert audit.target_empresa_id == empresa.id
+        assert audit.empresa_id == empresa.id
 
     async def test_anulacion_con_cuenta_corriente(self, client: AsyncClient, db_session: AsyncSession):
         empresa = await _crear_empresa(db_session)

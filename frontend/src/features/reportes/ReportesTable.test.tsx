@@ -7,8 +7,8 @@
  *          empty state displays "No results"; export buttons disabled when rows empty
  *   9.3 — export button href includes correct formato param and current filter params
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { cleanup, render, screen } from '@testing-library/react'
 import type { VentaReporteRow, ReportesFilters } from './types'
 
 // Mock api so buildExportUrl can be controlled
@@ -49,6 +49,11 @@ const mockRowNullGanancia: VentaReporteRow = {
 describe('ReportesTable', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
   })
 
   it('renders rows with correct column data', async () => {

@@ -1,6 +1,7 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Request, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config.database import get_db
@@ -8,10 +9,30 @@ from src.modules.auth.dependencies import get_current_user
 from src.modules.auth.models import Usuario
 from src.modules.desposte import schemas as desposte_schemas
 from src.modules.desposte import service as desposte_service
+from src.modules.desposte.models import TipoCorte
 from src.common.rbac import require_role
 from src.common.exceptions import NotFoundException
 
 router = APIRouter()
+
+
+# ---------------------------------------------------------------------------
+# Catálogo de tipos de corte (global)
+# IMPORTANTE: debe ir ANTES de /{desposte_id} para evitar shadowing.
+# ---------------------------------------------------------------------------
+@router.get(
+    "/tipos",
+    response_model=list[desposte_schemas.TipoCorteRead],
+    dependencies=[Depends(require_role("desposte:read"))],
+)
+async def listar_tipos_corte(
+    db: AsyncSession = Depends(get_db),
+) -> list[desposte_schemas.TipoCorteRead]:
+    """Lista los tipos de corte disponibles (catálogo global)."""
+    result = await db.execute(select(TipoCorte).order_by(TipoCorte.nombre))
+    return [
+        desposte_schemas.TipoCorteRead.model_validate(t) for t in result.scalars().all()
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -20,7 +41,7 @@ router = APIRouter()
 @router.get(
     "",
     response_model=desposte_schemas.DesposteListResponse,
-    dependencies=[Depends(require_role("despostes:read"))],
+    dependencies=[Depends(require_role("desposte:read"))],
 )
 async def list_despostes(
     request: Request,
@@ -58,7 +79,7 @@ async def list_despostes(
     "",
     response_model=desposte_schemas.DesposteResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_role("despostes:create"))],
+    dependencies=[Depends(require_role("desposte:create"))],
 )
 async def create_desposte(
     request: Request,
@@ -83,7 +104,7 @@ async def create_desposte(
 @router.get(
     "/{desposte_id}",
     response_model=desposte_schemas.DesposteResponse,
-    dependencies=[Depends(require_role("despostes:read"))],
+    dependencies=[Depends(require_role("desposte:read"))],
 )
 async def get_desposte(
     request: Request,
@@ -107,7 +128,7 @@ async def get_desposte(
     "/{desposte_id}/cortes",
     response_model=desposte_schemas.CorteDesposteResponse,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_role("despostes:update"))],
+    dependencies=[Depends(require_role("desposte:update"))],
 )
 async def add_corte(
     request: Request,
@@ -139,7 +160,7 @@ async def add_corte(
 @router.post(
     "/{desposte_id}/finalizar",
     response_model=desposte_schemas.DesposteFinalizarResponse,
-    dependencies=[Depends(require_role("despostes:update"))],
+    dependencies=[Depends(require_role("desposte:update"))],
 )
 async def finalizar_desposte(
     request: Request,

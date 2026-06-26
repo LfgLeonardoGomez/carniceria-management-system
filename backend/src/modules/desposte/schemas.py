@@ -120,3 +120,10 @@ class DesposteListResponse(BaseModel):
     limit: int
 
     model_config = ConfigDict(extra="forbid")
+
+
+class TipoCorteRead(BaseModel):
+    id: uuid.UUID
+    nombre: str
+
+    model_config = ConfigDict(from_attributes=True)

@@ -1,0 +1,24 @@
+# Global Docker ignore
+node_modules
+npm-debug.log
+pnpm-lock.yaml
+.env
+.env.local
+.env.*.local
+dist
+build
+.vite
+*.log
+.DS_Store
+.git
+.gitignore
+README.md
+openspec
+knowledge-base
+*.md
+frontend/node_modules
+backend/__pycache__
+backend/.venv
+backend/*.pyc
+backend/.pytest_cache
+backend/.mypy_cache
