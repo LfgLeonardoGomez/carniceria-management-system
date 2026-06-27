@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { NotificationBadge } from '@/components/notifications/NotificationBadge'
 
-const { mockUnreadCount, mockOpen, setMockState } = vi.hoisted(() => {
+const { mockUnreadCount, setMockState } = vi.hoisted(() => {
   const state = { unreadCount: 0, open: false }
   return {
     mockUnreadCount: () => state.unreadCount,

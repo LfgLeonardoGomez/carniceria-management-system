@@ -10,6 +10,7 @@ import { renderHook, waitFor, act } from '@testing-library/react'
 import type {
   RentabilidadProductosResponse,
   RentabilidadCortesResponse,
+  RentabilidadProductosFilters,
 } from './types'
 
 // ---------------------------------------------------------------------------
@@ -152,7 +153,7 @@ describe('useRentabilidadProductos', () => {
       .mockResolvedValueOnce(productosEmpty)
 
     const { useRentabilidadProductos } = await import('./useRentabilidad')
-    let currentFilters = { orden: 'mayor' as const }
+    let currentFilters: RentabilidadProductosFilters = { orden: 'mayor' }
 
     const { result, rerender } = renderHook(() =>
       useRentabilidadProductos(currentFilters)
