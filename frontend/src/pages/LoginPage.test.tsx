@@ -59,6 +59,14 @@ describe('LoginPage', () => {
     const mockResponse = {
       access_token: 'fake-token-123',
       token_type: 'bearer',
+      usuario: {
+        id: 'user-1',
+        email: 'user@example.com',
+        nombre: 'User',
+        apellido: 'Test',
+        rol: 'admin',
+        empresa_id: 'empresa-1',
+      },
     }
     vi.mocked(api.login).mockResolvedValue(mockResponse)
 
@@ -69,7 +77,7 @@ describe('LoginPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /iniciar sesión/i }))
 
     await waitFor(() => {
-      expect(api.login).toHaveBeenCalledWith({ email: 'user@example.com', password: 'password123' })
+      expect(api.login).toHaveBeenCalledWith({ email: 'user@example.com', contrasena: 'password123' })
     })
 
     await waitFor(() => {
@@ -77,7 +85,7 @@ describe('LoginPage', () => {
     })
 
     expect(mockSetToken).toHaveBeenCalledWith('fake-token-123')
-    expect(mockSetUser).toHaveBeenCalledWith(mockResponse)
+    expect(mockSetUser).toHaveBeenCalledWith(mockResponse.usuario)
     expect(screen.getByText('Dashboard')).toBeInTheDocument()
   })
 

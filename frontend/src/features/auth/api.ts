@@ -1,4 +1,5 @@
 import axios from 'axios'
+import type { User } from '@/store/authStore'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
@@ -15,6 +16,7 @@ export interface LoginRequest {
 export interface LoginResponse {
   access_token: string
   token_type: string
+  usuario: User
 }
 
 export interface RecoverRequest {

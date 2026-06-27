@@ -164,7 +164,7 @@ def test_seed_idempotency():
 def test_seed_admin_user():
     """Task 6.7: Seed data crea superadmin por defecto y es idempotente."""
     from database.seeds.roles import seed_roles
-    from database.seeds.admin_user import seed_admin_user
+    from database.seeds.admin_user import seed_admin_user, SEED_SUPERADMIN_EMAIL
     from modules.auth.models import Usuario, Rol
 
     engine = create_engine("sqlite:///:memory:", echo=False)
@@ -175,7 +175,7 @@ def test_seed_admin_user():
         seed_roles(session)
         seed_admin_user(session)
 
-        superadmin = session.query(Usuario).filter(Usuario.email == "superadmin@basile.local").first()
+        superadmin = session.query(Usuario).filter(Usuario.email == SEED_SUPERADMIN_EMAIL).first()
         assert superadmin is not None, "Superadmin no creado"
         assert superadmin.activo is True
         assert superadmin.rol is not None
