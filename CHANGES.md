@@ -346,7 +346,7 @@ C-01 → C-02 → C-03 → C-05 → C-06 → C-08 → C-09 → C-10 → C-12 →
   - `knowledge-base/05_reglas_de_negocio.md` §RN-VENT, §RN-PAGO
 
 ### [C-13] `caja-operaciones`
-- **Estado**: `[~]` parcial — los modelos `Caja` y `MovimientoCaja` YA existen (tabla creada en migración 012, arrastrada por C-12 para registrar movimientos al cobrar). Falta implementar los endpoints (apertura/cierre/movimientos) y el `service.py`. El `router.py` sigue siendo stub de 3 líneas. **Bloqueante**: sin apertura de caja, C-12 no puede cobrar medios != cuenta_corriente end-to-end.
+- **Estado**: `[x]` completado — archivado en `openspec/changes/archive/2026-06-21-c-13-caja-operaciones/`. `service.py` + `router.py` (140 líneas, 4 endpoints: apertura/cierre/movimientos) implementados con TDD; frontend de caja. Deuda técnica post-review resuelta el 2026-06-21 (ver abajo); restan 2 ítems diferidos no bloqueantes (Rel-W1 conciliación por riel, validación de cadena de migraciones).
 - **Scope**:
   - `POST /caja/apertura` — fecha, usuario_apertura, efectivo_inicial. Valida que no exista otra caja abierta para la empresa (v1.0, SU-03).
   - `POST /caja/cierre` — fecha_cierre, usuario_cierre, montos reales (efectivo, transferencias, tarjetas).
@@ -381,7 +381,7 @@ C-01 → C-02 → C-03 → C-05 → C-06 → C-08 → C-09 → C-10 → C-12 →
 > Control de la financiación a clientes y gastos operativos.
 
 ### [C-14] `cuentas-corrientes`
-- **Estado**: `[~]` parcial — el modelo `CuentaCorriente` y su tabla YA existen (migración 012, arrastrada por C-12 para generar deuda al cobrar con cuenta corriente; C-12 también escribe la reversión en anulación). Falta implementar los endpoints (pagos, estado de cuenta) y el `service.py`. El `router.py` sigue siendo stub de 3 líneas.
+- **Estado**: `[x]` completado — archivado en `openspec/changes/archive/2026-06-23-c-14-cuentas-corrientes/`. `service.py` + `router.py` (147 líneas, 3 endpoints: pagos, historial, estado de cuenta) implementados con TDD (54 backend + 6 frontend tests). Decisiones PO aplicadas: overpayment rechazado con 409, cajero con permiso `cuenta-corriente:update`. La generación automática de deuda y la reversión en anulación las trae C-12.
 - **Scope**:
   - Tabla `CuentaCorriente` (movimientos): `cliente_id`, `tipo` (deuda, pago), `importe`, `saldo_resultante`, `venta_id` (nullable), `fecha`.
   - Generación automática de deuda: al cobrar una venta con medio `cuenta_corriente`, se crea movimiento tipo `deuda` con importe = total de la venta (RN-CC-01, RN-PAGO-02).
@@ -399,7 +399,7 @@ C-01 → C-02 → C-03 → C-05 → C-06 → C-08 → C-09 → C-10 → C-12 →
   - `knowledge-base/05_reglas_de_negocio.md` §RN-CC, §RN-PAGO-02
 
 ### [C-15] `gastos`
-- **Estado**: `[ ]` pendiente — **stub vacío** en `backend/src/modules/gasto/` (router de 3 líneas, models TODO). Solo existe `CategoriaGasto` en DB.
+- **Estado**: `[x]` completado — archivado en `openspec/changes/archive/2026-06-22-c-15-gastos/`. CRUD de gastos + frontend implementados con TDD. El motor de alertas de gasto elevado quedó diferido (placeholder, requiere umbral configurable — ver IN-04).
 - **Scope**:
   - `CRUD /gastos` — fecha, categoría (enum fijo), descripción, importe, medio de pago.
   - Categorías fijas: alquiler, empleados, luz, agua, gas, internet, combustible, impuestos, mantenimiento, insumos, otros.
@@ -443,7 +443,7 @@ C-01 → C-02 → C-03 → C-05 → C-06 → C-08 → C-09 → C-10 → C-12 →
   - `knowledge-base/08_arquitectura_propuesta.md` §CQRS (a evaluar para este endpoint)
 
 ### [C-17] `reportes-ventas`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado — archivado en `openspec/changes/archive/2026-06-22-c-17-reportes-ventas/`. Endpoint con filtros + exportación (CSV/Excel/PDF) con filename fechado; frontend de reportes.
 - **Scope**:
   - Endpoint `GET /reportes/ventas` — filtros: rango de fechas, cliente.
   - Columnas: fecha, cliente, productos, kilos vendidos, subtotal, total, medio de pago, ganancia estimada.
@@ -457,7 +457,7 @@ C-01 → C-02 → C-03 → C-05 → C-06 → C-08 → C-09 → C-10 → C-12 →
   - `knowledge-base/05_reglas_de_negocio.md` §RN-REP-01 a RN-REP-03
 
 ### [C-18] `reportes-financieros`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado — archivado en `openspec/changes/archive/2026-06-22-c-18-reportes-financieros/`. Indicadores financieros con agrupación por período; aprobado por Judgment Day. Decisión PO: `utilidad_bruta` usa base de ingresos NET (`Venta.total`).
 - **Scope**:
   - Endpoint `GET /reportes/financieros` — indicadores: ventas, costos, gastos, utilidad bruta, utilidad neta.
   - Agrupaciones: día, semana, mes, año (parámetro `group_by`).
@@ -471,7 +471,7 @@ C-01 → C-02 → C-03 → C-05 → C-06 → C-08 → C-09 → C-10 → C-12 →
   - `knowledge-base/05_reglas_de_negocio.md` §RN-REP-04, §RN-REP-05
 
 ### [C-19] `rentabilidad`
-- **Estado**: `[ ]` pendiente
+- **Estado**: `[x]` completado — archivado en `openspec/changes/archive/2026-06-22-c-19-rentabilidad/`. 2 endpoints net-new (`/rentabilidad/productos`, `/rentabilidad/cortes`) + frontend. `GET /rentabilidad/general` se dropeó (reusa C-18). Decisión PO: el período de cortes lo define la fecha de venta.
 - **Scope**:
   - Endpoint `GET /rentabilidad/productos` — ranking de productos por margen (mayor y menor rentabilidad).
   - Endpoint `GET /rentabilidad/cortes` — margen por corte de desposte (costo final del desposte vs precio de venta promedio).
@@ -530,14 +530,16 @@ C-01 → C-02 → C-03 → C-05 → C-06 → C-08 → C-09 → C-10 → C-12 →
 | C-10 | stock-movimientos | 3 | ALTO | C-05 | `[x]` |
 | C-11 | balanza-systel | 4 | ALTO | C-05 | `[x]` |
 | C-12 | ventas-cobro | 4 | CRITICO | C-05, C-06, C-10 | `[x]` |
-| C-13 | caja-operaciones | 4 | ALTO | C-03, C-12 | `[~]` |
-| C-14 | cuentas-corrientes | 5 | ALTO | C-06, C-12 | `[~]` |
-| C-15 | gastos | 5 | MEDIO | C-03 | `[ ]` |
+| C-13 | caja-operaciones | 4 | ALTO | C-03, C-12 | `[x]` |
+| C-14 | cuentas-corrientes | 5 | ALTO | C-06, C-12 | `[x]` |
+| C-15 | gastos | 5 | MEDIO | C-03 | `[x]` |
 | C-16 | dashboard | 6 | MEDIO | C-09, C-12, C-13, C-15 | `[x]` |
-| C-17 | reportes-ventas | 6 | MEDIO | C-12 | `[ ]` |
-| C-18 | reportes-financieros | 6 | MEDIO | C-12, C-15 | `[ ]` |
-| C-19 | rentabilidad | 6 | MEDIO | C-09, C-12, C-15 | `[ ]` |
+| C-17 | reportes-ventas | 6 | MEDIO | C-12 | `[x]` |
+| C-18 | reportes-financieros | 6 | MEDIO | C-12, C-15 | `[x]` |
+| C-19 | rentabilidad | 6 | MEDIO | C-09, C-12, C-15 | `[x]` |
 | C-20 | auditoria-notificaciones | 7 | ALTO | C-10, C-12, C-13, C-14, C-15 | `[x]` |
+
+> **Changes extra (fuera del roadmap original, ya archivados)**: C-02b login-frontend, C-21 frontend-layout, C-22 catalogos-permisos-fix, c-rbac-superadmin. **Roadmap 100% entregado.**
 
 **Leyenda**: `[x]` = completado | `[~]` = parcial / con deuda técnica | `[ ]` = pendiente
 
@@ -560,7 +562,7 @@ C-01 → C-02 → C-03 → C-05 → C-06 → C-08 → C-09 → C-10 → C-12 →
 | 1 | ~~Desposte sin migración DB~~ | ~~CRITICA~~ | **RESUELTO 2026-06-18** — Migración 011 creada. Tablas `desposte` y `corte_desposte` existen. | `backend/src/database/migrations/versions/000000000011_add_desposte_tables.py` |
 | 2 | ~~Seed `TipoCorte` roto~~ | ~~ALTA~~ | **RESUELTO 2026-06-18** — Modelo `TipoCorte` SQLModel agregado, `Literal` renombrado a `TIPOS_CORTE_LITERAL`. Seed funciona. | `backend/src/modules/desposte/models.py` |
 | 3 | **Modelo `Usuario` en `auth/models.py`** | MEDIA | Pendiente | Stub en `usuario/models.py` genera confusión. Mover o consolidar. |
-| 4 | **Módulos vacíos en `main.py`** | BAJA | Pendiente | Routers stub (caja, CC, reporte, auditoria, notificacion, gasto) ensucian `/docs`. (venta ya implementado en C-12) |
+| 4 | ~~Módulos vacíos en `main.py`~~ | ~~BAJA~~ | **RESUELTO** — todos los routers (caja, CC, reporte, auditoria, notificacion, gasto) implementados vía C-13/C-14/C-15/C-17/C-18/C-19/C-20. Ya no son stubs. |
 | 5 | ~~Historial proveedor devuelve paginación vacía~~ | ~~BAJA~~ | **RESUELTO 2026-06-19** — Contrato definido: envelope `{items, total, skip, limit, costo_promedio_historico}` (consistente con los demás list endpoints). Test ajustado. |
 | 6 | ~~Matriz RBAC sin `productos:delete`/`proveedores:delete` para admin~~ | ~~ALTA~~ | **RESUELTO 2026-06-19** — Regresión de c-rbac-superadmin: el admin no podía borrar productos/proveedores (403). Permisos agregados. | `backend/src/common/rbac.py` |
 | 7 | ~~`crear/actualizar_usuario` lazy-load de `current_user.rol`~~ | ~~MEDIA~~ | **RESUELTO 2026-06-19** — `MissingGreenlet` en tests de service async. Reemplazado por `await db.get(Rol, ...)`. | `backend/src/modules/usuario/service.py` |
@@ -569,22 +571,18 @@ C-01 → C-02 → C-03 → C-05 → C-06 → C-08 → C-09 → C-10 → C-12 →
 
 ## Próximo paso recomendado
 
-### Opción A (Recomendada): Implementar C-13 caja-operaciones
-```bash
-/opsx:propose c-13-caja-operaciones
-```
-**Por qué**: Es la dependencia que falta para que **C-12 ventas-cobro sea usable end-to-end**. Hoy el cobro exige una caja abierta (`venta/service.py`) pero no existe endpoint de apertura → no se puede cobrar efectivo/tarjeta en runtime real, solo cuenta corriente. Los modelos `Caja`/`MovimientoCaja` ya existen (migración 012); falta service + endpoints + frontend.
+> **El roadmap original (C-01 → C-20) está 100% entregado y archivado.** No quedan changes del roadmap por proponer. Lo que sigue es deuda diferida y endurecimiento.
 
-### Opción B: Implementar C-14 cuentas-corrientes
-```bash
-/opsx:propose c-14-cuentas-corrientes
-```
-**Por qué**: Modelo `CuentaCorriente` y la generación de deuda al cobrar ya existen (los trajo C-12). Falta el registro de pagos y el estado de cuenta. Cierra el ciclo de venta a crédito.
+### Deuda diferida / mejoras pendientes (no bloqueantes)
+1. **Consolidar modelo `Usuario`** (#3) — stub en `usuario/models.py` vs `auth/models.py` genera confusión.
+2. **Rel-W1 (C-13)**: conciliación de tarjetas por riel (débito/crédito). Diferido v1.0.
+3. **Validación de cadena de migraciones**: correr `alembic upgrade head` contra DB real antes de prod (la suite usa `create_all`, no ejercita el trigger PL/pgSQL de la 015 ni la cadena completa).
+4. **Motores de alerta diferidos** (C-15 gasto elevado, C-20 deuda vencida): requieren definir umbrales/días configurables (ver IN-04).
+5. **Setup de Playwright** para E2E reales (hoy cubierto con Vitest+RTL; ver `c-frontend-e2e-tests` futuro).
 
-### Opción C: Fix deuda técnica restante
-1. Consolidar modelo `Usuario` (#3)
-2. Limpiar routers stub de `main.py` que ensucian `/docs` (#4)
+### Endurecimiento sugerido
+- El job `frontend-typecheck` (`tsc --noEmit`) **ya existe** en `.github/workflows/ci.yml`. El gap real es de **enforcement**: activar branch protection en `main` para que un CI en rojo bloquee el merge/push. Eso evitó que errores de tipo (ej. el `usuario` faltante en `LoginResponse`) llegaran a `main`.
 
 ---
 
-> **Última sincronización**: 2026-06-19 — Estado del código auditado a fondo. C-12 ventas-cobro completo (integra stock/caja/CC con reversión). C-13 caja y C-14 CC parciales (modelos + tablas existen vía migración 012, faltan endpoints). **542 tests pasan, 0 fallan** (suite completa con testcontainers). Las 10 fallas previas eran regresiones de c-rbac-superadmin + fragilidad async + contaminación del rate limiter entre tests — resueltas, no eran de C-12.
+> **Última sincronización**: 2026-06-27 — Roadmap C-01 → C-20 **100% entregado y archivado** (25 archives, incluyendo los extra C-02b, C-21, C-22, c-rbac-superadmin). `openspec list` vacío. C-13 y C-14, que esta tabla marcaba `[~]`, estaban en realidad completos desde el 21/23-jun — el `[~]` era documentación congelada en el snapshot del 2026-06-19. Backend ~864 tests / frontend ~267 verdes; `tsc --noEmit` en verde (5 errores de tipo pre-existentes en archivos de test limpiados el 27-jun). Restante: deuda diferida no bloqueante (ver "Próximo paso recomendado") + activar branch protection en `main`.
